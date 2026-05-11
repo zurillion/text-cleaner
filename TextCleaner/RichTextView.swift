@@ -27,7 +27,6 @@ struct RichTextView: NSViewRepresentable {
 
         let textView = NSTextView()
         textView.isRichText = true
-        textView.allowsEditingTextAttributes = true
         textView.usesFontPanel = false
         textView.usesRuler = false
         textView.usesInspectorBar = false
