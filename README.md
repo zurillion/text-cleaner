@@ -20,7 +20,10 @@ Built with SwiftUI for macOS 14+ (Sonoma, Sequoia, Tahoe).
   transformation, pastes the plain text via simulated `⌘V`, then restores
   the previous clipboard so other apps don't see the change.
 - Built-in actions: Remove formatting, UPPERCASE, lowercase, camelCase,
-  snake_case.
+  snake_case, Clean URL (strips tracking parameters like `utm_*`,
+  `fbclid`, `gclid`, Facebook `__cft__*`/`__tn__*`, Amazon
+  `pf_rd_*`/`pd_rd_*`, etc., with host-specific rules for YouTube,
+  Twitter/X, Instagram, LinkedIn, TikTok, Spotify, Reddit, and Amazon).
 - Optional Dock icon (default ON) rendered programmatically, with a
   right‑click menu mirroring the menu bar item.
 - 8 selectable popup themes.
@@ -40,6 +43,7 @@ TextCleaner/
   KeyboardShortcut.swift        Shortcut model + display string
   HotKeySettings.swift          UserDefaults persistence
   TextAction.swift              Actions + transformations
+  URLCleaner.swift              Tracking-parameter stripping for Clean URL
   PopupTheme.swift              Theme palette
   PopupView.swift               SwiftUI popup UI
   PopupWindowController.swift   NSPanel host, key routing

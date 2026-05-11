@@ -6,6 +6,7 @@ enum TextActionKind: String, CaseIterable, Codable {
     case lowercase
     case camelCase
     case snakeCase
+    case cleanURL
 }
 
 struct TextAction: Identifiable, Hashable {
@@ -21,6 +22,7 @@ struct TextAction: Identifiable, Hashable {
         TextAction(kind: .lowercase,        title: "lowercase",        icon: "characters.lowercase"),
         TextAction(kind: .camelCase,        title: "camelCase",        icon: "text.append"),
         TextAction(kind: .snakeCase,        title: "snake_case",       icon: "minus.forwardslash.plus"),
+        TextAction(kind: .cleanURL,         title: "Clean URL",        icon: "link"),
     ]
 
     func transform(_ input: String) -> String {
@@ -30,6 +32,7 @@ struct TextAction: Identifiable, Hashable {
         case .lowercase:        return input.lowercased()
         case .camelCase:        return TextTransforms.camelCase(input)
         case .snakeCase:        return TextTransforms.snakeCase(input)
+        case .cleanURL:         return URLCleaner.clean(input)
         }
     }
 }
