@@ -319,20 +319,21 @@ final class PopupWindowController {
                   event.window === self.previewPanel
             else { return event }
 
-            // Toggle rich-text attributes on ⌘B / ⌘I / ⌘U. NSTextView responds
-            // to these selectors natively when isRichText is on; we fire them
-            // through the responder chain so we don't need a Format menu.
+            // Toggle rich-text attributes on ⌘B / ⌘I / ⌘U. AppKit doesn't
+            // expose toggle selectors for bold / italic, so we operate on
+            // the text view's storage directly via RichTextActions.
             if event.modifierFlags.contains(.command),
-               event.modifierFlags.intersection([.option, .control]).isEmpty {
+               event.modifierFlags.intersection([.option, .control]).isEmpty,
+               let textView = self.findRichTextView() {
                 switch Int(event.keyCode) {
                 case kVK_ANSI_B:
-                    NSApp.sendAction(Selector(("toggleBold:")), to: nil, from: nil)
+                    RichTextActions.toggleBold(in: textView)
                     return nil
                 case kVK_ANSI_I:
-                    NSApp.sendAction(Selector(("toggleItalic:")), to: nil, from: nil)
+                    RichTextActions.toggleItalic(in: textView)
                     return nil
                 case kVK_ANSI_U:
-                    NSApp.sendAction(Selector(("toggleUnderline:")), to: nil, from: nil)
+                    RichTextActions.toggleUnderline(in: textView)
                     return nil
                 default:
                     break
@@ -360,6 +361,19 @@ final class PopupWindowController {
             NSEvent.removeMonitor(monitor)
             editingKeyMonitor = nil
         }
+    }
+
+    private func findRichTextView() -> NSTextView? {
+        guard let root = previewPanel?.contentView else { return nil }
+        return firstTextView(in: root)
+    }
+
+    private func firstTextView(in view: NSView) -> NSTextView? {
+        if let tv = view as? NSTextView { return tv }
+        for sub in view.subviews {
+            if let found = firstTextView(in: sub) { return found }
+        }
+        return nil
     }
 
     // MARK: - Paste

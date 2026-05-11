@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum PopupTheme: String, CaseIterable, Codable, Identifiable {
@@ -108,6 +109,20 @@ enum PopupTheme: String, CaseIterable, Codable, Identifiable {
         case .light:  return Color.black.opacity(0.10)
         case .sunset: return Color.black.opacity(0.10)
         default:      return Color.white.opacity(0.10)
+        }
+    }
+
+    /// `NSAppearance` to apply to AppKit views (e.g., the rich-text editor)
+    /// hosted inside the popup, so that system colors (text, cursor,
+    /// selection) match the theme.
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system:
+            return nil
+        case .light, .sunset:
+            return NSAppearance(named: .aqua)
+        case .dark, .midnight, .ocean, .forest, .mono:
+            return NSAppearance(named: .darkAqua)
         }
     }
 }
