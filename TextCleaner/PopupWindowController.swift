@@ -152,9 +152,38 @@ final class PopupWindowController {
         panel.styleMask.insert(.resizable)
         panel.minSize = NSSize(width: 320, height: 220)
         panel.setContentSize(defaultPreviewSize)
+        panel.twin = mainPanel
+        panel.isInEditMode = { [weak self] in
+            self?.model?.isEditing ?? false
+        }
         registerResignObserver(for: panel)
+        registerLiveResizeObserver(for: panel)
         self.previewPanel = panel
         return panel
+    }
+
+    private func registerLiveResizeObserver(for window: NSWindow) {
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.didEndLiveResizeNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handlePreviewResizeEnded()
+        }
+        resignObservers.append(observer)
+    }
+
+    private func handlePreviewResizeEnded() {
+        positionPanels()
+        guard let model = model, !model.isEditing else { return }
+        // After a resize the preview is key; hand focus back to main so the
+        // popup-level keys keep working without going through the forwarding
+        // path in PreviewPanel.keyDown.
+        ignoreResign = true
+        mainPanel?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
     }
 
     // MARK: - Panel factory
@@ -469,6 +498,21 @@ final class PopupPanel: NSPanel {
 }
 
 final class PreviewPanel: NSPanel {
+    /// When set, popup-level keys (Space / Tab / arrows / digits / Return /
+    /// Escape) received by the preview panel are forwarded to the main
+    /// panel's keyDown so the popup keeps working even after the user
+    /// clicks or resizes the preview and it became key.
+    weak var twin: PopupPanel?
+    var isInEditMode: () -> Bool = { false }
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func keyDown(with event: NSEvent) {
+        if !isInEditMode(), let twin = twin {
+            twin.keyDown(with: event)
+            return
+        }
+        super.keyDown(with: event)
+    }
 }
