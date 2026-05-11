@@ -51,11 +51,18 @@ better regenerated).
 
 ```sh
 brew install xcodegen
+cp -n Local.xcconfig.example Local.xcconfig   # one-off; safe to repeat
 xcodegen generate
 open TextCleaner.xcodeproj
 ```
 
 Then build & run in Xcode (`⌘R`).
+
+`Local.xcconfig` is gitignored. Open it and set `DEVELOPMENT_TEAM` to your
+Apple Developer team ID so that the code signature stays stable across
+rebuilds — otherwise macOS revokes the Accessibility permission every time
+the binary is recompiled. Subsequent `xcodegen generate` runs preserve this
+file.
 
 ### Option 2 — Create the Xcode project manually
 

@@ -1,0 +1,18 @@
+// Local Xcode build settings.
+//
+// This file is read by every build. It is *not* overwritten by `xcodegen
+// generate`, so personal settings live here instead of in `project.yml`.
+//
+// Setup (once):
+//   1. Copy this file to `Local.xcconfig` (already gitignored).
+//   2. Set DEVELOPMENT_TEAM to your Apple Developer team ID, found in
+//      Xcode → Settings → Accounts → your Apple ID → row at the bottom,
+//      column "Team ID" (10 characters, e.g. ABC123XYZ4).
+//   3. Re-run `xcodegen generate`. From now on the Team setting survives
+//      regenerations.
+//
+// Leave DEVELOPMENT_TEAM empty to keep ad-hoc ("Sign to Run Locally")
+// signing — note that ad-hoc signatures change at every rebuild, which
+// causes macOS to revoke previously-granted Accessibility permissions.
+
+// DEVELOPMENT_TEAM = ABC123XYZ4

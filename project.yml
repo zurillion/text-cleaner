@@ -10,14 +10,15 @@ settings:
     SWIFT_VERSION: "5.10"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
-    CODE_SIGN_IDENTITY: "-"
 
 targets:
   TextCleaner:
     type: application
     platform: macOS
+    configFiles:
+      Debug: Local.xcconfig
+      Release: Local.xcconfig
     sources:
       - path: TextCleaner
         excludes:
