@@ -33,7 +33,10 @@ final class PopupWindowController {
         let model = PopupViewModel(actions: actions)
         self.model = model
 
-        let view = PopupView(model: model) { [weak self] action in
+        let view = PopupView(
+            model: model,
+            settings: AppSettings.shared
+        ) { [weak self] action in
             self?.commit(action: action)
         }
         let hosting = NSHostingView(rootView: view)

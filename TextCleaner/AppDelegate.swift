@@ -4,28 +4,58 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyManager: HotKeyManager?
     private var popupController: PopupWindowController?
+    private var settingsController: SettingsWindowController?
     private var statusItem: NSStatusItem?
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        applyActivationPolicy()
+    }
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
+        rerouteAppMenuSettingsItem()
 
         hotKeyManager = HotKeyManager { [weak self] in
             self?.showPopup()
         }
         hotKeyManager?.register(with: HotKeySettings.current)
 
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(hotKeyChanged),
-            name: .hotKeyChanged,
-            object: nil
-        )
+        let nc = NotificationCenter.default
+        nc.addObserver(self, selector: #selector(hotKeyChanged),
+                       name: .hotKeyChanged, object: nil)
+        nc.addObserver(self, selector: #selector(dockIconPreferenceChanged),
+                       name: .dockIconPreferenceChanged, object: nil)
+    }
+
+    /// SwiftUI's `Settings` scene injects a "Settings…" item into the app
+    /// menu. We use a custom settings window instead, so we redirect that
+    /// menu item (and ⌘,) to our handler.
+    private func rerouteAppMenuSettingsItem() {
+        guard let appMenu = NSApp.mainMenu?.item(at: 0)?.submenu else { return }
+        for item in appMenu.items {
+            guard let selector = item.action else { continue }
+            let name = NSStringFromSelector(selector)
+            if name == "showSettingsWindow:" || name == "showPreferencesWindow:" {
+                item.target = self
+                item.action = #selector(openSettings)
+                item.keyEquivalent = ","
+                item.keyEquivalentModifierMask = .command
+            }
+        }
     }
 
     @objc private func hotKeyChanged() {
         hotKeyManager?.register(with: HotKeySettings.current)
+    }
+
+    @objc private func dockIconPreferenceChanged() {
+        applyActivationPolicy()
+    }
+
+    private func applyActivationPolicy() {
+        let policy: NSApplication.ActivationPolicy =
+            AppSettings.shared.showDockIcon ? .regular : .accessory
+        NSApp.setActivationPolicy(policy)
     }
 
     private func setupStatusItem() {
@@ -35,17 +65,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             accessibilityDescription: "Text Cleaner"
         )
         let menu = NSMenu()
-        menu.addItem(
+        let showItem = menu.addItem(
             withTitle: "Show Cleaner…",
             action: #selector(showPopupFromMenu),
             keyEquivalent: ""
-        ).target = self
+        )
+        showItem.target = self
         menu.addItem(.separator())
-        menu.addItem(
+        let settingsItem = menu.addItem(
             withTitle: "Settings…",
             action: #selector(openSettings),
             keyEquivalent: ","
-        ).target = self
+        )
+        settingsItem.target = self
         menu.addItem(.separator())
         menu.addItem(
             withTitle: "Quit Text Cleaner",
@@ -61,12 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        if settingsController == nil {
+            settingsController = SettingsWindowController()
         }
+        settingsController?.show()
     }
 
     private func showPopup() {

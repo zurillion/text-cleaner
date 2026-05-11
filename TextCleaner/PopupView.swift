@@ -21,19 +21,21 @@ final class PopupViewModel: ObservableObject {
 
 struct PopupView: View {
     @ObservedObject var model: PopupViewModel
+    @ObservedObject var settings: AppSettings
     let onSelect: (TextAction) -> Void
 
     var body: some View {
+        let theme = settings.theme
         VStack(alignment: .leading, spacing: 8) {
             Text("Text Cleaner")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.secondaryForeground)
                 .padding(.horizontal, 6)
                 .padding(.top, 2)
 
             VStack(spacing: 2) {
                 ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
-                    row(index: index, action: action)
+                    row(index: index, action: action, theme: theme)
                 }
             }
         }
@@ -41,17 +43,17 @@ struct PopupView: View {
         .frame(width: 320)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
+                .fill(theme.background)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(theme.borderTint, lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.18), radius: 18, y: 6)
+                .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
         )
     }
 
     @ViewBuilder
-    private func row(index: Int, action: TextAction) -> some View {
+    private func row(index: Int, action: TextAction, theme: PopupTheme) -> some View {
         let isSelected = index == model.selectedIndex
         HStack(spacing: 10) {
             Text("\(index + 1)")
@@ -60,17 +62,17 @@ struct PopupView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 4)
                         .fill(isSelected
-                              ? Color.white.opacity(0.25)
-                              : Color.primary.opacity(0.08))
+                              ? theme.onAccent.opacity(0.25)
+                              : theme.chipBackground)
                 )
-                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.7))
+                .foregroundStyle(isSelected ? theme.onAccent : theme.secondaryForeground)
 
             Image(systemName: action.icon)
                 .frame(width: 16)
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .foregroundStyle(isSelected ? theme.onAccent : theme.foreground)
 
             Text(action.title)
-                .foregroundStyle(isSelected ? Color.white : Color.primary)
+                .foregroundStyle(isSelected ? theme.onAccent : theme.foreground)
 
             Spacer()
         }
@@ -78,7 +80,7 @@ struct PopupView: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor : Color.clear)
+                .fill(isSelected ? theme.accent : Color.clear)
         )
         .contentShape(Rectangle())
         .onHover { hovering in

@@ -2,9 +2,14 @@ import AppKit
 import Carbon.HIToolbox
 
 /// Reads the current clipboard (plain text, falling back to RTF), applies a
-/// transformation, writes the result back to the pasteboard, and then
-/// simulates a ⌘V keystroke so the frontmost app receives a paste.
+/// transformation, writes the result back to the pasteboard, simulates a ⌘V
+/// keystroke so the frontmost app receives a paste, and finally restores the
+/// original clipboard contents.
 enum PasteSimulator {
+    /// Delay after posting ⌘V before restoring the original clipboard.
+    /// The receiving app needs time to read the pasteboard.
+    private static let restoreDelay: TimeInterval = 0.4
+
     static func run(action: TextAction) {
         let pasteboard = NSPasteboard.general
         guard let original = readText(from: pasteboard), !original.isEmpty else {
@@ -13,11 +18,16 @@ enum PasteSimulator {
         }
 
         let transformed = action.transform(original)
+        let snapshot = snapshotItems(of: pasteboard)
 
         pasteboard.clearContents()
         pasteboard.setString(transformed, forType: .string)
 
         sendCommandV()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + restoreDelay) {
+            restore(items: snapshot, to: pasteboard)
+        }
     }
 
     private static func readText(from pb: NSPasteboard) -> String? {
@@ -46,6 +56,32 @@ enum PasteSimulator {
             return attr.string
         }
         return nil
+    }
+
+    private static func snapshotItems(of pb: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
+        guard let items = pb.pasteboardItems else { return [] }
+        return items.map { item in
+            var dict: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                if let data = item.data(forType: type) {
+                    dict[type] = data
+                }
+            }
+            return dict
+        }
+    }
+
+    private static func restore(items: [[NSPasteboard.PasteboardType: Data]], to pb: NSPasteboard) {
+        guard !items.isEmpty else { return }
+        pb.clearContents()
+        let rebuilt: [NSPasteboardItem] = items.map { dict in
+            let item = NSPasteboardItem()
+            for (type, data) in dict {
+                item.setData(data, forType: type)
+            }
+            return item
+        }
+        pb.writeObjects(rebuilt)
     }
 
     private static func sendCommandV() {
