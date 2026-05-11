@@ -32,6 +32,18 @@ struct KeyboardShortcut: Codable, Equatable {
         s += KeyCodeDisplay.string(for: keyCode)
         return s
     }
+
+    /// Whether an incoming `NSEvent.keyDown` matches this shortcut. Only
+    /// the four standard modifiers (⌃ ⌥ ⇧ ⌘) are considered; caps-lock,
+    /// numeric pad and function flags are ignored.
+    func matches(_ event: NSEvent) -> Bool {
+        guard event.keyCode == UInt16(keyCode) else { return false }
+        let relevant: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
+        let eventFlags = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .intersection(relevant)
+        return eventFlags == modifierFlags
+    }
 }
 
 enum KeyCodeDisplay {

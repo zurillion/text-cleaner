@@ -108,6 +108,13 @@ final class PopupWindowController {
         }
         mainPanel.onTogglePreview = { [weak self] in self?.togglePreview() }
         mainPanel.onBeginEdit     = { [weak self] in self?.beginEdit() }
+        mainPanel.customShortcut  = { [weak self] event in
+            guard let self = self,
+                  AppSettings.shared.centerShortcut.matches(event)
+            else { return false }
+            self.recenterHorizontally()
+            return true
+        }
 
         registerResignObserver(for: mainPanel)
         self.mainPanel = mainPanel
@@ -183,7 +190,6 @@ final class PopupWindowController {
     }
 
     private func handlePreviewResizeEnded() {
-        positionPanels()
         guard let model = model, !model.isEditing else { return }
         // After a resize the preview is key; hand focus back to main so the
         // popup-level keys keep working without going through the forwarding
@@ -364,13 +370,8 @@ final class PopupWindowController {
         dragStartScreenLocation = nil
         dragStartMainOrigin = nil
         dragStartPreviewOrigin = nil
-
-        // Per spec: if the preview is open, snap the composition back to
-        // horizontal center; otherwise leave the main panel where the
-        // user dropped it.
-        if model?.showsPreview == true {
-            recenterHorizontally()
-        }
+        // No auto re-centering. The user can re-center on demand via the
+        // configurable center shortcut (AppSettings.centerShortcut).
     }
 
     // MARK: - Preview / edit toggles
@@ -576,11 +577,16 @@ final class PopupPanel: NSPanel {
     var onNumber:        ((Int) -> Void)?
     var onTogglePreview: (() -> Void)?
     var onBeginEdit:     (() -> Void)?
+    /// Inspected before any keyDown switch. If it returns true the event
+    /// is considered consumed (used for the user-configurable center
+    /// shortcut, defined in AppSettings).
+    var customShortcut: ((NSEvent) -> Bool)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
     override func keyDown(with event: NSEvent) {
+        if customShortcut?(event) == true { return }
         switch Int(event.keyCode) {
         case kVK_UpArrow:
             onMoveUp?()

@@ -39,9 +39,9 @@ struct SettingsView: View {
     }
 
     private var hotkeySection: some View {
-        section(title: "Hotkey") {
+        section(title: "Shortcuts") {
             HStack {
-                Text("Invoke shortcut")
+                Text("Invoke")
                 Spacer()
                 ShortcutRecorder(shortcut: $shortcut)
                     .frame(width: 180, height: 24)
@@ -49,9 +49,19 @@ struct SettingsView: View {
                     shortcut = HotKeySettings.defaultShortcut
                 }
             }
-            Text("Click the field and press the desired combination. Must include at least one modifier (⌃, ⌥, ⇧, ⌘).")
+            HStack {
+                Text("Re-center popup")
+                Spacer()
+                ShortcutRecorder(shortcut: $settings.centerShortcut)
+                    .frame(width: 180, height: 24)
+                Button("Reset") {
+                    settings.centerShortcut = AppSettings.defaultCenterShortcut
+                }
+            }
+            Text("Click a field and press the desired combination. Must include at least one modifier (⌃, ⌥, ⇧, ⌘). The re-center shortcut only fires while the popup is open.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .onChange(of: shortcut) { _, newValue in
             HotKeySettings.current = newValue
