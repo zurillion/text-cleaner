@@ -1,17 +1,25 @@
 import AppKit
 import SwiftUI
 
+extension NSAttributedString.Key {
+    /// Marks `.foregroundColor` attributes that `RichTextThemer` injected
+    /// to make plain text readable on a themed background. These markers
+    /// are stripped before the value is reported back to the view model,
+    /// so the user's "logical" content stays un-themed.
+    static let popupInjectedColor = NSAttributedString.Key("TextCleanerInjectedColor")
+}
+
 /// SwiftUI wrapper around `NSTextView` with rich-text editing enabled.
 /// Same component is used for both the preview pane (`isEditable=false`)
 /// and the edit pane (`isEditable=true`) — only the editable flag and
 /// the onChange callback differ.
 ///
-/// With `isRichText = true`, the underlying `NSTextView` preserves
-/// per-character attributes from RTF. The default text color follows
-/// the `NSAppearance` we set from the popup theme, so unattributed
-/// characters remain readable on dark themes without forcing an
-/// override that would clobber explicit colors in the attributed
-/// string.
+/// We bypass the usual `NSColor.textColor` / NSAppearance plumbing for
+/// the default text color (it wasn't propagating reliably through
+/// `NSHostingView`) and instead inject a concrete color from the theme
+/// onto runs that don't already carry one. The injection is tagged with
+/// `.popupInjectedColor` so we can strip it back out on the way to the
+/// view model.
 struct RichTextView: NSViewRepresentable {
     let attributedString: NSAttributedString
     let isEditable: Bool
@@ -39,6 +47,7 @@ struct RichTextView: NSViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.font = .systemFont(ofSize: 13)
+        textView.insertionPointColor = NSColor(theme.foreground)
         textView.appearance = theme.nsAppearance
         textView.autoresizingMask = [.width]
         textView.textContainer?.widthTracksTextView = true
@@ -46,9 +55,17 @@ struct RichTextView: NSViewRepresentable {
 
         scrollView.documentView = textView
 
+        let defaultColor = NSColor(theme.foreground)
+        textView.typingAttributes = [
+            .font: NSFont.systemFont(ofSize: 13),
+            .foregroundColor: defaultColor,
+            .popupInjectedColor: true,
+        ]
+
+        let themed = RichTextThemer.apply(attributedString, color: defaultColor)
         context.coordinator.textView = textView
-        context.coordinator.lastValue = attributedString
-        textView.textStorage?.setAttributedString(attributedString)
+        context.coordinator.lastInputValue = attributedString
+        textView.textStorage?.setAttributedString(themed)
 
         return scrollView
     }
@@ -57,22 +74,28 @@ struct RichTextView: NSViewRepresentable {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         textView.isEditable = isEditable
         textView.appearance = theme.nsAppearance
+        textView.insertionPointColor = NSColor(theme.foreground)
         scrollView.appearance = theme.nsAppearance
 
-        // Only push a new value into the storage when the binding actually
-        // changed; otherwise we'd wipe attributes and the user's selection
-        // on every re-render.
-        if !attributedString.isEqual(to: context.coordinator.lastValue) {
+        let defaultColor = NSColor(theme.foreground)
+        var typing = textView.typingAttributes
+        typing[.foregroundColor] = defaultColor
+        typing[.popupInjectedColor] = true
+        textView.typingAttributes = typing
+
+        // Only push when the binding actually changed; otherwise we'd kill
+        // the user's selection on every keystroke.
+        if !attributedString.isEqual(to: context.coordinator.lastInputValue) {
+            let themed = RichTextThemer.apply(attributedString, color: defaultColor)
             let storage = textView.textStorage
             let savedSelection = textView.selectedRange()
-            storage?.setAttributedString(attributedString)
-            let clampedLoc = min(savedSelection.location, attributedString.length)
+            storage?.setAttributedString(themed)
+            let clampedLoc = min(savedSelection.location, themed.length)
             textView.setSelectedRange(NSRange(location: clampedLoc, length: 0))
-            context.coordinator.lastValue = attributedString
+            context.coordinator.lastInputValue = attributedString
         }
 
-        if isEditable,
-           textView.window?.firstResponder !== textView {
+        if isEditable, textView.window?.firstResponder !== textView {
             DispatchQueue.main.async {
                 textView.window?.makeFirstResponder(textView)
             }
@@ -86,7 +109,7 @@ struct RichTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: RichTextView
         weak var textView: NSTextView?
-        var lastValue: NSAttributedString = NSAttributedString()
+        var lastInputValue: NSAttributedString = NSAttributedString()
 
         init(parent: RichTextView) {
             self.parent = parent
@@ -95,9 +118,47 @@ struct RichTextView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             let snapshot = NSAttributedString(attributedString: textView.attributedString())
-            lastValue = snapshot
-            parent.onChange?(snapshot)
+            let stripped = RichTextThemer.strip(snapshot)
+            lastInputValue = stripped
+            parent.onChange?(stripped)
         }
+    }
+}
+
+// MARK: - Theme injection / stripping
+
+enum RichTextThemer {
+    /// Adds `.foregroundColor = color` (plus the `popupInjectedColor`
+    /// marker) to runs of `input` that don't already carry a foreground
+    /// color. Existing colors are left alone.
+    static func apply(_ input: NSAttributedString, color: NSColor) -> NSAttributedString {
+        guard input.length > 0 else { return input }
+        let mut = NSMutableAttributedString(attributedString: input)
+        let range = NSRange(location: 0, length: mut.length)
+        mut.enumerateAttribute(.foregroundColor, in: range, options: []) { value, runRange, _ in
+            if value == nil {
+                mut.addAttribute(.foregroundColor, value: color, range: runRange)
+                mut.addAttribute(.popupInjectedColor, value: true, range: runRange)
+            }
+        }
+        return mut
+    }
+
+    /// Removes the `.foregroundColor` from runs flagged as theme-injected
+    /// (and removes the marker itself). User-set colors are untouched.
+    static func strip(_ input: NSAttributedString) -> NSAttributedString {
+        guard input.length > 0 else { return input }
+        let mut = NSMutableAttributedString(attributedString: input)
+        let range = NSRange(location: 0, length: mut.length)
+        var dirty = false
+        mut.enumerateAttribute(.popupInjectedColor, in: range, options: []) { value, runRange, _ in
+            if (value as? Bool) == true {
+                mut.removeAttribute(.foregroundColor, range: runRange)
+                mut.removeAttribute(.popupInjectedColor, range: runRange)
+                dirty = true
+            }
+        }
+        return dirty ? mut : input
     }
 }
 
@@ -111,11 +172,11 @@ struct RichTextView: NSViewRepresentable {
 
 enum RichTextActions {
     static func toggleBold(in textView: NSTextView) {
-        toggleFontTrait(.boldFontMask, opposite: .unboldFontMask, in: textView)
+        toggleFontTrait(.boldFontMask, in: textView)
     }
 
     static func toggleItalic(in textView: NSTextView) {
-        toggleFontTrait(.italicFontMask, opposite: .unitalicFontMask, in: textView)
+        toggleFontTrait(.italicFontMask, in: textView)
     }
 
     static func toggleUnderline(in textView: NSTextView) {
@@ -148,11 +209,7 @@ enum RichTextActions {
         textView.didChangeText()
     }
 
-    private static func toggleFontTrait(
-        _ trait: NSFontTraitMask,
-        opposite: NSFontTraitMask,
-        in textView: NSTextView
-    ) {
+    private static func toggleFontTrait(_ trait: NSFontTraitMask, in textView: NSTextView) {
         let fm = NSFontManager.shared
         let range = textView.selectedRange()
 
@@ -186,6 +243,5 @@ enum RichTextActions {
         }
         storage.endEditing()
         textView.didChangeText()
-        _ = opposite  // unused; kept for symmetry / future use
     }
 }
