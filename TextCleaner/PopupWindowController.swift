@@ -21,6 +21,7 @@ final class PopupWindowController {
     private var ignoreResign = false
 
     private let previewGap: CGFloat = 12
+    private let defaultPreviewSize = NSSize(width: 420, height: 320)
 
     deinit {
         for observer in resignObservers {
@@ -44,6 +45,8 @@ final class PopupWindowController {
         model.editedAttributed = NSAttributedString()
 
         previewPanel?.orderOut(nil)
+        // Forget any user resize from the previous session.
+        previewPanel?.setContentSize(defaultPreviewSize)
         applyThemeAppearance()
 
         positionPanels()
@@ -119,9 +122,15 @@ final class PopupWindowController {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, !self.ignoreResign else { return }
             let key = NSApp.keyWindow
-            if key !== self.mainPanel && key !== self.previewPanel {
-                self.close()
+            if key === self.mainPanel || key === self.previewPanel {
+                return
             }
+            // The system font / color panels can briefly become key while
+            // the user interacts with them. Stay open.
+            if key is NSFontPanel || key is NSColorPanel {
+                return
+            }
+            self.close()
         }
     }
 
@@ -137,9 +146,12 @@ final class PopupWindowController {
         )
         let panel = makePanel(
             style: PreviewPanel.self,
-            initialSize: NSSize(width: 400, height: 280),
+            initialSize: defaultPreviewSize,
             rootView: previewView
         )
+        panel.styleMask.insert(.resizable)
+        panel.minSize = NSSize(width: 320, height: 220)
+        panel.setContentSize(defaultPreviewSize)
         registerResignObserver(for: panel)
         self.previewPanel = panel
         return panel
@@ -328,21 +340,30 @@ final class PopupWindowController {
                   event.window === self.previewPanel
             else { return event }
 
-            // Toggle rich-text attributes on ⌘B / ⌘I / ⌘U. AppKit doesn't
-            // expose toggle selectors for bold / italic, so we operate on
-            // the text view's storage directly via RichTextActions.
+            // ⌘B / ⌘I / ⌘U toggle font traits on the selection (AppKit
+            // doesn't expose toggle selectors we could fire via the
+            // responder chain). ⌘T summons the system Fonts panel, which
+            // then targets the text view's first responder.
             if event.modifierFlags.contains(.command),
-               event.modifierFlags.intersection([.option, .control]).isEmpty,
-               let textView = self.findRichTextView() {
+               event.modifierFlags.intersection([.option, .control]).isEmpty {
                 switch Int(event.keyCode) {
                 case kVK_ANSI_B:
-                    RichTextActions.toggleBold(in: textView)
+                    if let textView = self.findRichTextView() {
+                        RichTextActions.toggleBold(in: textView)
+                    }
                     return nil
                 case kVK_ANSI_I:
-                    RichTextActions.toggleItalic(in: textView)
+                    if let textView = self.findRichTextView() {
+                        RichTextActions.toggleItalic(in: textView)
+                    }
                     return nil
                 case kVK_ANSI_U:
-                    RichTextActions.toggleUnderline(in: textView)
+                    if let textView = self.findRichTextView() {
+                        RichTextActions.toggleUnderline(in: textView)
+                    }
+                    return nil
+                case kVK_ANSI_T:
+                    NSFontManager.shared.orderFrontFontPanel(nil)
                     return nil
                 default:
                     break

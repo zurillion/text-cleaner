@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 
 enum TextActionKind: String, CaseIterable, Codable {
+    case unvaried
     case removeFormatting
     case uppercase
     case lowercase
@@ -18,6 +19,7 @@ struct TextAction: Identifiable, Hashable {
     var id: TextActionKind { kind }
 
     static let all: [TextAction] = [
+        TextAction(kind: .unvaried,         title: "Unvaried",         icon: "equal"),
         TextAction(kind: .removeFormatting, title: "Remove formatting", icon: "textformat"),
         TextAction(kind: .uppercase,        title: "UPPERCASE",        icon: "characters.uppercase"),
         TextAction(kind: .lowercase,        title: "lowercase",        icon: "characters.lowercase"),
@@ -28,6 +30,8 @@ struct TextAction: Identifiable, Hashable {
 
     func transform(_ input: NSAttributedString) -> NSAttributedString {
         switch kind {
+        case .unvaried:
+            return input
         case .removeFormatting:
             return NSAttributedString(string: input.string)
         case .uppercase:

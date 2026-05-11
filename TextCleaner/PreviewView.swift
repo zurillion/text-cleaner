@@ -16,7 +16,10 @@ struct PreviewView: View {
             }
         }
         .padding(10)
-        .frame(width: 400)
+        .frame(
+            minWidth: 320, idealWidth: 420, maxWidth: .infinity,
+            minHeight: 220, idealHeight: 320, maxHeight: .infinity
+        )
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(theme.background)
@@ -32,7 +35,7 @@ struct PreviewView: View {
     // MARK: - Subviews
 
     private func header(theme: PopupTheme) -> some View {
-        HStack {
+        HStack(spacing: 10) {
             Text(model.isEditing ? "Edit" : "Preview")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.secondaryForeground)
@@ -40,6 +43,7 @@ struct PreviewView: View {
             if !model.isEditing {
                 hint(key: "⇥", label: "Edit", theme: theme)
             } else {
+                hint(key: "⌘T", label: "Style", theme: theme)
                 hint(key: "⇧↩", label: "Confirm", theme: theme)
                 hint(key: "⎋", label: "Cancel", theme: theme)
             }
@@ -63,7 +67,7 @@ struct PreviewView: View {
                 model.editedAttributed = newValue
             } : nil
         )
-        .frame(minHeight: 160, maxHeight: 360)
+        .frame(minHeight: 160, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(theme.foreground.opacity(0.06))

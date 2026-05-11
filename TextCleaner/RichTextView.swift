@@ -65,6 +65,7 @@ struct RichTextView: NSViewRepresentable {
         let themed = RichTextThemer.apply(attributedString, color: defaultColor)
         context.coordinator.textView = textView
         context.coordinator.lastInputValue = attributedString
+        context.coordinator.lastTheme = theme
         textView.textStorage?.setAttributedString(themed)
 
         return scrollView
@@ -83,9 +84,13 @@ struct RichTextView: NSViewRepresentable {
         typing[.popupInjectedColor] = true
         textView.typingAttributes = typing
 
-        // Only push when the binding actually changed; otherwise we'd kill
-        // the user's selection on every keystroke.
-        if !attributedString.isEqual(to: context.coordinator.lastInputValue) {
+        let themeChanged = context.coordinator.lastTheme != theme
+        let contentChanged = !attributedString.isEqual(to: context.coordinator.lastInputValue)
+
+        // Push to storage when the binding actually changed OR when the
+        // theme changed (so previously-injected colors update). Otherwise
+        // we'd kill the user's selection on every keystroke.
+        if contentChanged || themeChanged {
             let themed = RichTextThemer.apply(attributedString, color: defaultColor)
             let storage = textView.textStorage
             let savedSelection = textView.selectedRange()
@@ -93,6 +98,7 @@ struct RichTextView: NSViewRepresentable {
             let clampedLoc = min(savedSelection.location, themed.length)
             textView.setSelectedRange(NSRange(location: clampedLoc, length: 0))
             context.coordinator.lastInputValue = attributedString
+            context.coordinator.lastTheme = theme
         }
 
         if isEditable, textView.window?.firstResponder !== textView {
@@ -110,6 +116,7 @@ struct RichTextView: NSViewRepresentable {
         var parent: RichTextView
         weak var textView: NSTextView?
         var lastInputValue: NSAttributedString = NSAttributedString()
+        var lastTheme: PopupTheme? = nil
 
         init(parent: RichTextView) {
             self.parent = parent
