@@ -26,6 +26,7 @@ struct PreviewView: View {
                 )
                 .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
         )
+        .preferredColorScheme(theme.preferredColorScheme)
     }
 
     // MARK: - Subviews

@@ -125,4 +125,18 @@ enum PopupTheme: String, CaseIterable, Codable, Identifiable {
             return NSAppearance(named: .darkAqua)
         }
     }
+
+    /// SwiftUI color scheme matching `nsAppearance`. Returning `nil` means
+    /// "inherit from system" and is suitable to pass to
+    /// `.preferredColorScheme(_:)`.
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light, .sunset:
+            return .light
+        case .dark, .midnight, .ocean, .forest, .mono:
+            return .dark
+        }
+    }
 }

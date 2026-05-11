@@ -44,9 +44,16 @@ final class PopupWindowController {
         model.editedAttributed = NSAttributedString()
 
         previewPanel?.orderOut(nil)
+        applyThemeAppearance()
 
         positionPanels()
         mainPanel.makeKeyAndOrderFront(nil)
+    }
+
+    private func applyThemeAppearance() {
+        let appearance = AppSettings.shared.theme.nsAppearance
+        mainPanel?.appearance = appearance
+        previewPanel?.appearance = appearance
     }
 
     func close() {
@@ -230,6 +237,7 @@ final class PopupWindowController {
 
     private func showPreview() {
         guard let panel = buildPreviewPanelIfNeeded() else { return }
+        applyThemeAppearance()
         positionPanels()
         ignoreResign = true
         panel.orderFront(nil)
@@ -253,6 +261,7 @@ final class PopupWindowController {
             model.showsPreview = true
             _ = buildPreviewPanelIfNeeded()
         }
+        applyThemeAppearance()
         model.editedAttributed = model.currentPreviewAttributed
         model.isEditing = true
         positionPanels()
