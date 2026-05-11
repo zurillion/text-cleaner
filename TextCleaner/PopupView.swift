@@ -4,10 +4,10 @@ final class PopupViewModel: ObservableObject {
     @Published var selectedIndex: Int = 0
     @Published var showsPreview: Bool = false
     @Published var isEditing: Bool = false
-    @Published var editedText: String = ""
+    @Published var editedAttributed: NSAttributedString = NSAttributedString()
 
     let actions: [TextAction]
-    var sourceText: String = ""
+    var sourceAttributed: NSAttributedString = NSAttributedString()
 
     init(actions: [TextAction]) {
         self.actions = actions
@@ -23,11 +23,13 @@ final class PopupViewModel: ObservableObject {
         selectedIndex = (selectedIndex + 1) % actions.count
     }
 
-    /// Text shown in the preview pane for the current state.
-    var currentPreviewText: String {
-        if isEditing { return editedText }
-        guard actions.indices.contains(selectedIndex) else { return "" }
-        return actions[selectedIndex].transform(sourceText)
+    /// Attributed text shown in the preview pane for the current state.
+    var currentPreviewAttributed: NSAttributedString {
+        if isEditing { return editedAttributed }
+        guard actions.indices.contains(selectedIndex) else {
+            return NSAttributedString()
+        }
+        return actions[selectedIndex].transform(sourceAttributed)
     }
 }
 

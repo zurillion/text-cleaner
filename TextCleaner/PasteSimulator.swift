@@ -1,23 +1,50 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Two responsibilities:
-///   - `readSourceText` snapshots the clipboard into a plain string the popup
-///     can use to drive previews and transformations.
-///   - `paste(text:)` puts a string on the clipboard, posts a synthetic ⌘V,
-///     and then restores the original pasteboard contents so the user's
-///     clipboard appears untouched.
+/// Reads/writes the clipboard as `NSAttributedString`, preserving any RTF
+/// formatting. `paste(attributed:)` decides at write time whether the
+/// outgoing text carries non-trivial styling — if it does, both RTF and
+/// plain are placed on the pasteboard so the receiver can pick. Otherwise
+/// only plain text is written.
 enum PasteSimulator {
     /// Delay after posting ⌘V before restoring the original clipboard.
-    /// The receiving app needs time to read the pasteboard.
     private static let restoreDelay: TimeInterval = 0.4
 
-    static func readSourceText() -> String? {
-        readText(from: NSPasteboard.general)
+    // MARK: - Read
+
+    static func readSourceAttributed() -> NSAttributedString {
+        let pb = NSPasteboard.general
+        if let data = pb.data(forType: .rtfd),
+           let attr = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.rtfd],
+                documentAttributes: nil) {
+            return attr
+        }
+        if let data = pb.data(forType: .rtf),
+           let attr = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.rtf],
+                documentAttributes: nil) {
+            return attr
+        }
+        if let data = pb.data(forType: .html),
+           let attr = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.html],
+                documentAttributes: nil) {
+            return attr
+        }
+        if let plain = pb.string(forType: .string), !plain.isEmpty {
+            return NSAttributedString(string: plain)
+        }
+        return NSAttributedString()
     }
 
-    static func paste(text: String) {
-        guard !text.isEmpty else {
+    // MARK: - Paste
+
+    static func paste(attributed: NSAttributedString) {
+        guard attributed.length > 0 else {
             NSSound.beep()
             return
         }
@@ -25,7 +52,7 @@ enum PasteSimulator {
         let snapshot = snapshotItems(of: pasteboard)
 
         pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        writeAttributed(attributed, to: pasteboard)
 
         sendCommandV()
 
@@ -34,35 +61,75 @@ enum PasteSimulator {
         }
     }
 
-    // MARK: - Private
+    private static func writeAttributed(_ attributed: NSAttributedString, to pb: NSPasteboard) {
+        let plain = attributed.string
 
-    private static func readText(from pb: NSPasteboard) -> String? {
-        if let plain = pb.string(forType: .string), !plain.isEmpty {
-            return plain
+        if hasFormatting(attributed) {
+            let range = NSRange(location: 0, length: attributed.length)
+            if let rtfData = try? attributed.data(
+                from: range,
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            ) {
+                pb.setData(rtfData, forType: .rtf)
+            }
+            pb.setString(plain, forType: .string)
+        } else {
+            pb.setString(plain, forType: .string)
         }
-        if let rtfData = pb.data(forType: .rtf),
-           let attr = try? NSAttributedString(
-                data: rtfData,
-                options: [.documentType: NSAttributedString.DocumentType.rtf],
-                documentAttributes: nil) {
-            return attr.string
-        }
-        if let rtfdData = pb.data(forType: .rtfd),
-           let attr = try? NSAttributedString(
-                data: rtfdData,
-                options: [.documentType: NSAttributedString.DocumentType.rtfd],
-                documentAttributes: nil) {
-            return attr.string
-        }
-        if let html = pb.data(forType: .html),
-           let attr = try? NSAttributedString(
-                data: html,
-                options: [.documentType: NSAttributedString.DocumentType.html],
-                documentAttributes: nil) {
-            return attr.string
-        }
-        return nil
     }
+
+    /// Heuristic: any explicit bold/italic font trait, underline,
+    /// strikethrough, link or non-default color counts as formatting.
+    private static func hasFormatting(_ attr: NSAttributedString) -> Bool {
+        guard attr.length > 0 else { return false }
+        let fullRange = NSRange(location: 0, length: attr.length)
+        var formatted = false
+
+        attr.enumerateAttributes(in: fullRange, options: []) { attrs, _, stop in
+            if let font = attrs[.font] as? NSFont {
+                let traits = font.fontDescriptor.symbolicTraits
+                if traits.contains(.bold) || traits.contains(.italic) {
+                    formatted = true; stop.pointee = true; return
+                }
+            }
+            if let style = attrs[.underlineStyle] as? Int, style != 0 {
+                formatted = true; stop.pointee = true; return
+            }
+            if let style = attrs[.strikethroughStyle] as? Int, style != 0 {
+                formatted = true; stop.pointee = true; return
+            }
+            if attrs[.link] != nil {
+                formatted = true; stop.pointee = true; return
+            }
+            if let color = attrs[.foregroundColor] as? NSColor,
+               !colorIsDefault(color) {
+                formatted = true; stop.pointee = true; return
+            }
+            if attrs[.backgroundColor] != nil {
+                formatted = true; stop.pointee = true; return
+            }
+        }
+        return formatted
+    }
+
+    private static func colorIsDefault(_ color: NSColor) -> Bool {
+        // Compare against the named system text colors. These all resolve via
+        // the catalog and don't have stable RGB components, so check identity
+        // / catalog name first.
+        if color == NSColor.labelColor { return true }
+        if color == NSColor.textColor  { return true }
+        guard let rgb = color.usingColorSpace(.deviceRGB) else { return false }
+        // Black with full alpha is the rich-text editor default in TextEdit.
+        if abs(rgb.redComponent)   < 0.01,
+           abs(rgb.greenComponent) < 0.01,
+           abs(rgb.blueComponent)  < 0.01,
+           abs(rgb.alphaComponent - 1) < 0.01 {
+            return true
+        }
+        return false
+    }
+
+    // MARK: - Snapshot / restore
 
     private static func snapshotItems(of pb: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
         guard let items = pb.pasteboardItems else { return [] }
@@ -89,6 +156,8 @@ enum PasteSimulator {
         }
         pb.writeObjects(rebuilt)
     }
+
+    // MARK: - Cmd-V
 
     private static func sendCommandV() {
         let source = CGEventSource(stateID: .combinedSessionState)

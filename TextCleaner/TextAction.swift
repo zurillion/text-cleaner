@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum TextActionKind: String, CaseIterable, Codable {
@@ -25,15 +26,39 @@ struct TextAction: Identifiable, Hashable {
         TextAction(kind: .cleanURL,         title: "Clean URL",        icon: "link"),
     ]
 
-    func transform(_ input: String) -> String {
+    func transform(_ input: NSAttributedString) -> NSAttributedString {
         switch kind {
-        case .removeFormatting: return input
-        case .uppercase:        return input.uppercased()
-        case .lowercase:        return input.lowercased()
-        case .camelCase:        return TextTransforms.camelCase(input)
-        case .snakeCase:        return TextTransforms.snakeCase(input)
-        case .cleanURL:         return URLCleaner.clean(input)
+        case .removeFormatting:
+            return NSAttributedString(string: input.string)
+        case .uppercase:
+            return mapCase(input) { $0.uppercased() }
+        case .lowercase:
+            return mapCase(input) { $0.lowercased() }
+        case .camelCase:
+            return NSAttributedString(string: TextTransforms.camelCase(input.string))
+        case .snakeCase:
+            return NSAttributedString(string: TextTransforms.snakeCase(input.string))
+        case .cleanURL:
+            return NSAttributedString(string: URLCleaner.clean(input.string))
         }
+    }
+
+    /// Applies a string transform while preserving the original attribute
+    /// runs (assumes the transform doesn't change character count, which
+    /// `uppercased`/`lowercased` honour for the common cases).
+    private func mapCase(
+        _ input: NSAttributedString,
+        _ transform: (String) -> String
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        let range = NSRange(location: 0, length: input.length)
+        let nsString = input.string as NSString
+
+        input.enumerateAttributes(in: range, options: []) { attrs, runRange, _ in
+            let chunk = nsString.substring(with: runRange)
+            result.append(NSAttributedString(string: transform(chunk), attributes: attrs))
+        }
+        return result
     }
 }
 

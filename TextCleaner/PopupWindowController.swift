@@ -37,11 +37,11 @@ final class PopupWindowController {
 
         previousFrontmost = NSWorkspace.shared.frontmostApplication
 
-        model.sourceText = PasteSimulator.readSourceText() ?? ""
+        model.sourceAttributed = PasteSimulator.readSourceAttributed()
         model.selectedIndex = 0
         model.showsPreview = false
         model.isEditing = false
-        model.editedText = ""
+        model.editedAttributed = NSAttributedString()
 
         previewPanel?.orderOut(nil)
 
@@ -253,7 +253,7 @@ final class PopupWindowController {
             model.showsPreview = true
             _ = buildPreviewPanelIfNeeded()
         }
-        model.editedText = model.currentPreviewText
+        model.editedAttributed = model.currentPreviewAttributed
         model.isEditing = true
         positionPanels()
 
@@ -269,7 +269,7 @@ final class PopupWindowController {
         guard let model = model else { return }
         removeEditingKeyMonitor()
         model.isEditing = false
-        model.editedText = ""
+        model.editedAttributed = NSAttributedString()
         // Per spec: Annulla / Esc closes the preview entirely.
         model.showsPreview = false
         ignoreResign = true
@@ -282,9 +282,9 @@ final class PopupWindowController {
 
     private func confirmEdit() {
         guard let model = model else { return }
-        let text = model.editedText
+        let attributed = model.editedAttributed
         removeEditingKeyMonitor()
-        pasteAndClose(text: text)
+        pasteAndClose(attributed: attributed)
     }
 
     private func confirmSelection() {
@@ -295,8 +295,8 @@ final class PopupWindowController {
 
     private func commitAction(_ action: TextAction) {
         guard let model = model else { return }
-        let text = action.transform(model.sourceText)
-        pasteAndClose(text: text)
+        let attributed = action.transform(model.sourceAttributed)
+        pasteAndClose(attributed: attributed)
     }
 
     private func handleEscape() {
@@ -318,6 +318,26 @@ final class PopupWindowController {
                   model.isEditing,
                   event.window === self.previewPanel
             else { return event }
+
+            // Toggle rich-text attributes on ⌘B / ⌘I / ⌘U. NSTextView responds
+            // to these selectors natively when isRichText is on; we fire them
+            // through the responder chain so we don't need a Format menu.
+            if event.modifierFlags.contains(.command),
+               event.modifierFlags.intersection([.option, .control]).isEmpty {
+                switch Int(event.keyCode) {
+                case kVK_ANSI_B:
+                    NSApp.sendAction(Selector(("toggleBold:")), to: nil, from: nil)
+                    return nil
+                case kVK_ANSI_I:
+                    NSApp.sendAction(Selector(("toggleItalic:")), to: nil, from: nil)
+                    return nil
+                case kVK_ANSI_U:
+                    NSApp.sendAction(Selector(("toggleUnderline:")), to: nil, from: nil)
+                    return nil
+                default:
+                    break
+                }
+            }
 
             switch Int(event.keyCode) {
             case kVK_Return, kVK_ANSI_KeypadEnter:
@@ -344,7 +364,7 @@ final class PopupWindowController {
 
     // MARK: - Paste
 
-    private func pasteAndClose(text: String) {
+    private func pasteAndClose(attributed: NSAttributedString) {
         let target = previousFrontmost
         close()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
@@ -357,7 +377,7 @@ final class PopupWindowController {
                 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                PasteSimulator.paste(text: text)
+                PasteSimulator.paste(attributed: attributed)
             }
         }
     }
