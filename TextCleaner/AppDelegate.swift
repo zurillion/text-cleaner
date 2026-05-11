@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,11 +10,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         applyActivationPolicy()
+        NSApp.applicationIconImage = AppIcon.make()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
         rerouteAppMenuSettingsItem()
+        promptForAccessibilityIfNeeded()
 
         hotKeyManager = HotKeyManager { [weak self] in
             self?.showPopup()
@@ -25,6 +28,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                        name: .hotKeyChanged, object: nil)
         nc.addObserver(self, selector: #selector(dockIconPreferenceChanged),
                        name: .dockIconPreferenceChanged, object: nil)
+    }
+
+    // MARK: - Dock interaction
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows: Bool
+    ) -> Bool {
+        if !hasVisibleWindows {
+            openSettings()
+        }
+        return true
+    }
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        buildActionMenu(includeQuit: false)
+    }
+
+    // MARK: - Notifications
+
+    @objc private func hotKeyChanged() {
+        hotKeyManager?.register(with: HotKeySettings.current)
+    }
+
+    @objc private func dockIconPreferenceChanged() {
+        applyActivationPolicy()
+    }
+
+    // MARK: - Helpers
+
+    private func applyActivationPolicy() {
+        let policy: NSApplication.ActivationPolicy =
+            AppSettings.shared.showDockIcon ? .regular : .accessory
+        NSApp.setActivationPolicy(policy)
     }
 
     /// SwiftUI's `Settings` scene injects a "Settings…" item into the app
@@ -44,18 +81,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    @objc private func hotKeyChanged() {
-        hotKeyManager?.register(with: HotKeySettings.current)
-    }
-
-    @objc private func dockIconPreferenceChanged() {
-        applyActivationPolicy()
-    }
-
-    private func applyActivationPolicy() {
-        let policy: NSApplication.ActivationPolicy =
-            AppSettings.shared.showDockIcon ? .regular : .accessory
-        NSApp.setActivationPolicy(policy)
+    /// Triggers macOS's native Accessibility prompt if the permission is
+    /// missing. Posting CGEvents to other apps silently fails without it.
+    private func promptForAccessibilityIfNeeded() {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
     private func setupStatusItem() {
@@ -64,29 +94,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             systemSymbolName: "wand.and.sparkles",
             accessibilityDescription: "Text Cleaner"
         )
+        item.menu = buildActionMenu(includeQuit: true)
+        statusItem = item
+    }
+
+    private func buildActionMenu(includeQuit: Bool) -> NSMenu {
         let menu = NSMenu()
-        let showItem = menu.addItem(
+        let show = menu.addItem(
             withTitle: "Show Cleaner…",
             action: #selector(showPopupFromMenu),
             keyEquivalent: ""
         )
-        showItem.target = self
+        show.target = self
+
         menu.addItem(.separator())
-        let settingsItem = menu.addItem(
+
+        let settings = menu.addItem(
             withTitle: "Settings…",
             action: #selector(openSettings),
             keyEquivalent: ","
         )
-        settingsItem.target = self
-        menu.addItem(.separator())
-        menu.addItem(
-            withTitle: "Quit Text Cleaner",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        )
-        item.menu = menu
-        statusItem = item
+        settings.target = self
+
+        if includeQuit {
+            menu.addItem(.separator())
+            menu.addItem(
+                withTitle: "Quit Text Cleaner",
+                action: #selector(NSApplication.terminate(_:)),
+                keyEquivalent: "q"
+            )
+        }
+        return menu
     }
+
+    // MARK: - Actions
 
     @objc private func showPopupFromMenu() {
         showPopup()

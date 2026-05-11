@@ -9,6 +9,7 @@ final class PopupWindowController {
     private var panel: PopupPanel?
     private var model: PopupViewModel?
     private var resignObserver: NSObjectProtocol?
+    private weak var previousFrontmost: NSRunningApplication?
 
     deinit {
         if let observer = resignObserver {
@@ -19,6 +20,9 @@ final class PopupWindowController {
     func show() {
         if panel == nil { build() }
         guard let panel = panel, let model = model else { return }
+        // Remember which app was active so we can hand focus back to it
+        // before posting the synthetic ⌘V.
+        previousFrontmost = NSWorkspace.shared.frontmostApplication
         model.selectedIndex = 0
         positionPanel(panel)
         panel.makeKeyAndOrderFront(nil)
@@ -107,10 +111,20 @@ final class PopupWindowController {
     }
 
     private func commit(action: TextAction) {
+        let target = previousFrontmost
         close()
-        // Give the front app a moment to regain key focus before pasting.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            PasteSimulator.run(action: action)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            if let target = target,
+               target.bundleIdentifier != Bundle.main.bundleIdentifier {
+                if #available(macOS 14.0, *) {
+                    target.activate()
+                } else {
+                    target.activate(options: [.activateIgnoringOtherApps])
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                PasteSimulator.run(action: action)
+            }
         }
     }
 }
