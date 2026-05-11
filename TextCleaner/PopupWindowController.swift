@@ -16,6 +16,13 @@ final class PopupWindowController {
     private var editingKeyMonitor: Any?
     private weak var previousFrontmost: NSRunningApplication?
 
+    // Drag state — set when the user starts moving the main popup by its
+    // title bar; we keep absolute references so the math doesn't drift as
+    // the panels themselves move during the drag.
+    private var dragStartScreenLocation: NSPoint?
+    private var dragStartMainOrigin: NSPoint?
+    private var dragStartPreviewOrigin: NSPoint?
+
     // Suppresses the resign-key auto-close during programmatic key handoffs
     // between the main and preview panels.
     private var ignoreResign = false
@@ -80,10 +87,12 @@ final class PopupWindowController {
 
         let popupView = PopupView(
             model: model,
-            settings: AppSettings.shared
-        ) { [weak self] action in
-            self?.commitAction(action)
-        }
+            settings: AppSettings.shared,
+            onSelect: { [weak self] action in self?.commitAction(action) },
+            onDragBegan: { [weak self] loc in self?.handleMainDragBegan(at: loc) },
+            onDragChanged: { [weak self] loc in self?.handleMainDragChanged(at: loc) },
+            onDragEnded: { [weak self] in self?.handleMainDragEnded() }
+        )
         let mainPanel = makePanel(
             style: PopupPanel.self,
             initialSize: NSSize(width: 340, height: 320),
@@ -263,6 +272,107 @@ final class PopupWindowController {
         }
     }
 
+    /// Places the preview panel to the right of the main popup at main's
+    /// current position, without moving the main panel. Used when the
+    /// preview is toggled on after the user has dragged the main popup
+    /// away from the default centered position.
+    private func positionPreviewNextToMain() {
+        guard let mainPanel = mainPanel,
+              let previewPanel = previewPanel,
+              let screen = NSScreen.main else { return }
+        mainPanel.layoutIfNeeded()
+        previewPanel.layoutIfNeeded()
+
+        let mainFrame = mainPanel.frame
+        let pSize = previewPanel.frame.size
+        let visible = screen.visibleFrame
+
+        // Prefer to the right; if it would clip off-screen, flip to the
+        // left of the main panel. If still clipped, fall back to right.
+        var previewX = mainFrame.maxX + previewGap
+        if previewX + pSize.width > visible.maxX - 8 {
+            let leftCandidate = mainFrame.minX - previewGap - pSize.width
+            if leftCandidate >= visible.minX + 8 {
+                previewX = leftCandidate
+            }
+        }
+
+        let previewY = mainFrame.maxY - pSize.height
+        previewPanel.setFrameOrigin(NSPoint(x: previewX, y: previewY))
+    }
+
+    /// Re-centers the main/preview composition along X only, preserving
+    /// each panel's current Y. Used after a drag that ends with the
+    /// preview open: the user can move the popup vertically, but the
+    /// composition snaps back to horizontal center so the preview stays
+    /// on-screen.
+    private func recenterHorizontally() {
+        guard let mainPanel = mainPanel,
+              let model = model,
+              let screen = NSScreen.main else { return }
+
+        mainPanel.layoutIfNeeded()
+        let mainSize = mainPanel.frame.size
+        let mainY = mainPanel.frame.origin.y
+        let visible = screen.visibleFrame
+
+        let showingPreview = model.showsPreview
+        let previewSize = previewPanel?.frame.size ?? .zero
+        let totalWidth = showingPreview
+            ? mainSize.width + previewGap + previewSize.width
+            : mainSize.width
+
+        var leftEdge = visible.midX - totalWidth / 2
+        leftEdge = max(visible.minX + 8, min(leftEdge, visible.maxX - totalWidth - 8))
+
+        mainPanel.setFrameOrigin(NSPoint(x: leftEdge, y: mainY))
+
+        if showingPreview, let previewPanel = previewPanel {
+            let previewY = previewPanel.frame.origin.y
+            let previewX = leftEdge + mainSize.width + previewGap
+            previewPanel.setFrameOrigin(NSPoint(x: previewX, y: previewY))
+        }
+    }
+
+    // MARK: - Drag handling
+
+    private func handleMainDragBegan(at screenLocation: NSPoint) {
+        dragStartScreenLocation = screenLocation
+        dragStartMainOrigin = mainPanel?.frame.origin
+        dragStartPreviewOrigin = previewPanel?.frame.origin
+    }
+
+    private func handleMainDragChanged(at screenLocation: NSPoint) {
+        guard let start = dragStartScreenLocation,
+              let mainOrigin = dragStartMainOrigin else { return }
+        let dx = screenLocation.x - start.x
+        let dy = screenLocation.y - start.y
+
+        mainPanel?.setFrameOrigin(NSPoint(
+            x: mainOrigin.x + dx,
+            y: mainOrigin.y + dy
+        ))
+        if let previewOrigin = dragStartPreviewOrigin {
+            previewPanel?.setFrameOrigin(NSPoint(
+                x: previewOrigin.x + dx,
+                y: previewOrigin.y + dy
+            ))
+        }
+    }
+
+    private func handleMainDragEnded() {
+        dragStartScreenLocation = nil
+        dragStartMainOrigin = nil
+        dragStartPreviewOrigin = nil
+
+        // Per spec: if the preview is open, snap the composition back to
+        // horizontal center; otherwise leave the main panel where the
+        // user dropped it.
+        if model?.showsPreview == true {
+            recenterHorizontally()
+        }
+    }
+
     // MARK: - Preview / edit toggles
 
     private func togglePreview() {
@@ -279,7 +389,7 @@ final class PopupWindowController {
     private func showPreview() {
         guard let panel = buildPreviewPanelIfNeeded() else { return }
         applyThemeAppearance()
-        positionPanels()
+        positionPreviewNextToMain()
         ignoreResign = true
         panel.orderFront(nil)
         DispatchQueue.main.async { [weak self] in
@@ -305,7 +415,7 @@ final class PopupWindowController {
         applyThemeAppearance()
         model.editedAttributed = model.currentPreviewAttributed
         model.isEditing = true
-        positionPanels()
+        positionPreviewNextToMain()
 
         ignoreResign = true
         previewPanel?.makeKeyAndOrderFront(nil)

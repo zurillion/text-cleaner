@@ -37,15 +37,14 @@ struct PopupView: View {
     @ObservedObject var model: PopupViewModel
     @ObservedObject var settings: AppSettings
     let onSelect: (TextAction) -> Void
+    let onDragBegan: (NSPoint) -> Void
+    let onDragChanged: (NSPoint) -> Void
+    let onDragEnded: () -> Void
 
     var body: some View {
         let theme = settings.theme
         VStack(alignment: .leading, spacing: 8) {
-            Text("Text Cleaner")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(theme.secondaryForeground)
-                .padding(.horizontal, 6)
-                .padding(.top, 2)
+            titleBar(theme: theme)
 
             VStack(spacing: 2) {
                 ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
@@ -73,6 +72,26 @@ struct PopupView: View {
                 .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
         )
         .preferredColorScheme(theme.preferredColorScheme)
+    }
+
+    @ViewBuilder
+    private func titleBar(theme: PopupTheme) -> some View {
+        HStack {
+            Text("Text Cleaner")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.secondaryForeground)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, minHeight: 22)
+        .padding(.horizontal, 6)
+        .padding(.top, 2)
+        .background(
+            WindowDragHandle(
+                onBegan: onDragBegan,
+                onChanged: onDragChanged,
+                onEnded: onDragEnded
+            )
+        )
     }
 
     @ViewBuilder
