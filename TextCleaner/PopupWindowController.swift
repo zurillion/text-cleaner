@@ -2,52 +2,151 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Manages the floating popup panel: builds an NSPanel that doesn't steal
-/// activation from the front app, hosts the SwiftUI popup view, and routes
-/// keyboard events to the view model.
+/// Manages the floating popup panel, plus a sibling preview panel:
+///   - Main panel hosts the action list; non-activating, key by default.
+///   - Preview panel is built lazily, shown to the right when toggled.
+///     Becomes key only in edit mode so its TextEditor receives input.
+/// Routes keyboard events from both panels to a shared `PopupViewModel`.
 final class PopupWindowController {
-    private var panel: PopupPanel?
+    private var mainPanel: PopupPanel?
+    private var previewPanel: PreviewPanel?
     private var model: PopupViewModel?
-    private var resignObserver: NSObjectProtocol?
+
+    private var resignObservers: [NSObjectProtocol] = []
+    private var editingKeyMonitor: Any?
     private weak var previousFrontmost: NSRunningApplication?
 
+    // Suppresses the resign-key auto-close during programmatic key handoffs
+    // between the main and preview panels.
+    private var ignoreResign = false
+
+    private let previewGap: CGFloat = 12
+
     deinit {
-        if let observer = resignObserver {
+        for observer in resignObservers {
             NotificationCenter.default.removeObserver(observer)
         }
+        removeEditingKeyMonitor()
     }
 
+    // MARK: - Public
+
     func show() {
-        if panel == nil { build() }
-        guard let panel = panel, let model = model else { return }
-        // Remember which app was active so we can hand focus back to it
-        // before posting the synthetic ⌘V.
+        if mainPanel == nil { build() }
+        guard let mainPanel = mainPanel, let model = model else { return }
+
         previousFrontmost = NSWorkspace.shared.frontmostApplication
+
+        model.sourceText = PasteSimulator.readSourceText() ?? ""
         model.selectedIndex = 0
-        positionPanel(panel)
-        panel.makeKeyAndOrderFront(nil)
+        model.showsPreview = false
+        model.isEditing = false
+        model.editedText = ""
+
+        previewPanel?.orderOut(nil)
+
+        positionPanels()
+        mainPanel.makeKeyAndOrderFront(nil)
     }
 
     func close() {
-        panel?.orderOut(nil)
+        ignoreResign = true
+        previewPanel?.orderOut(nil)
+        mainPanel?.orderOut(nil)
+        removeEditingKeyMonitor()
+        model?.isEditing = false
+        model?.showsPreview = false
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
     }
+
+    // MARK: - Build
 
     private func build() {
         let actions = TextAction.all
         let model = PopupViewModel(actions: actions)
         self.model = model
 
-        let view = PopupView(
+        let popupView = PopupView(
             model: model,
             settings: AppSettings.shared
         ) { [weak self] action in
-            self?.commit(action: action)
+            self?.commitAction(action)
         }
-        let hosting = NSHostingView(rootView: view)
-        hosting.translatesAutoresizingMaskIntoConstraints = false
+        let mainPanel = makePanel(
+            style: PopupPanel.self,
+            initialSize: NSSize(width: 340, height: 320),
+            rootView: popupView
+        )
+        mainPanel.onMoveUp     = { [weak model] in model?.moveUp() }
+        mainPanel.onMoveDown   = { [weak model] in model?.moveDown() }
+        mainPanel.onConfirm    = { [weak self] in self?.confirmSelection() }
+        mainPanel.onCancel     = { [weak self] in self?.handleEscape() }
+        mainPanel.onNumber     = { [weak self, weak model] num in
+            guard let model = model, num >= 1, num <= model.actions.count else { return }
+            self?.commitAction(model.actions[num - 1])
+        }
+        mainPanel.onTogglePreview = { [weak self] in self?.togglePreview() }
+        mainPanel.onBeginEdit     = { [weak self] in self?.beginEdit() }
 
-        let panel = PopupPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 340, height: 280),
+        registerResignObserver(for: mainPanel)
+        self.mainPanel = mainPanel
+    }
+
+    private func registerResignObserver(for window: NSWindow) {
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.scheduleResignCheck()
+        }
+        resignObservers.append(observer)
+    }
+
+    /// Called when any of our panels resigns key. We defer the check by one
+    /// runloop so that if focus is moving from main → preview (or vice versa)
+    /// the new key window is in place before we inspect.
+    private func scheduleResignCheck() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, !self.ignoreResign else { return }
+            let key = NSApp.keyWindow
+            if key !== self.mainPanel && key !== self.previewPanel {
+                self.close()
+            }
+        }
+    }
+
+    private func buildPreviewPanelIfNeeded() -> PreviewPanel? {
+        if let previewPanel = previewPanel { return previewPanel }
+        guard let model = model else { return nil }
+
+        let previewView = PreviewView(
+            model: model,
+            settings: AppSettings.shared,
+            onCancel: { [weak self] in self?.cancelEdit() },
+            onConfirm: { [weak self] in self?.confirmEdit() }
+        )
+        let panel = makePanel(
+            style: PreviewPanel.self,
+            initialSize: NSSize(width: 400, height: 280),
+            rootView: previewView
+        )
+        registerResignObserver(for: panel)
+        self.previewPanel = panel
+        return panel
+    }
+
+    // MARK: - Panel factory
+
+    private func makePanel<P: NSPanel, V: View>(
+        style: P.Type,
+        initialSize: NSSize,
+        rootView: V
+    ) -> P {
+        let panel = P(
+            contentRect: NSRect(origin: .zero, size: initialSize),
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -62,6 +161,8 @@ final class PopupWindowController {
         panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
+        let hosting = NSHostingView(rootView: rootView)
+        hosting.translatesAutoresizingMaskIntoConstraints = false
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(hosting)
@@ -73,44 +174,177 @@ final class PopupWindowController {
         ])
         panel.contentView = container
         panel.setContentSize(hosting.fittingSize)
-
-        panel.onMoveUp     = { [weak model] in model?.moveUp() }
-        panel.onMoveDown   = { [weak model] in model?.moveDown() }
-        panel.onConfirm    = { [weak self, weak model] in
-            guard let model = model else { return }
-            let idx = max(0, min(model.selectedIndex, model.actions.count - 1))
-            self?.commit(action: model.actions[idx])
-        }
-        panel.onCancel     = { [weak self] in self?.close() }
-        panel.onNumber     = { [weak self, weak model] num in
-            guard let model = model, num >= 1, num <= model.actions.count else { return }
-            self?.commit(action: model.actions[num - 1])
-        }
-
-        resignObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didResignKeyNotification,
-            object: panel,
-            queue: .main
-        ) { [weak self] _ in
-            self?.close()
-        }
-
-        self.panel = panel
+        return panel
     }
 
-    private func positionPanel(_ panel: NSPanel) {
-        guard let screen = NSScreen.main else { return }
-        panel.layoutIfNeeded()
-        let size = panel.frame.size
+    // MARK: - Positioning
+
+    private func positionPanels() {
+        guard let mainPanel = mainPanel, let model = model,
+              let screen = NSScreen.main else { return }
+
+        mainPanel.layoutIfNeeded()
+        let mainSize = mainPanel.frame.size
         let visible = screen.visibleFrame
-        let origin = NSPoint(
-            x: visible.midX - size.width / 2,
-            y: visible.midY - size.height / 2 + visible.height * 0.15
+
+        let showingPreview = model.showsPreview
+        let previewSize = previewPanel?.frame.size ?? .zero
+
+        let totalWidth = showingPreview
+            ? mainSize.width + previewGap + previewSize.width
+            : mainSize.width
+
+        var leftEdge = visible.midX - totalWidth / 2
+        leftEdge = max(visible.minX + 8, min(leftEdge, visible.maxX - totalWidth - 8))
+
+        let topY = visible.midY + mainSize.height / 2 + visible.height * 0.10
+        let mainOrigin = NSPoint(
+            x: leftEdge,
+            y: topY - mainSize.height
         )
-        panel.setFrameOrigin(origin)
+        mainPanel.setFrameOrigin(mainOrigin)
+
+        if showingPreview, let previewPanel = previewPanel {
+            previewPanel.layoutIfNeeded()
+            let pSize = previewPanel.frame.size
+            let previewOrigin = NSPoint(
+                x: mainOrigin.x + mainSize.width + previewGap,
+                y: mainOrigin.y + mainSize.height - pSize.height
+            )
+            previewPanel.setFrameOrigin(previewOrigin)
+        }
     }
 
-    private func commit(action: TextAction) {
+    // MARK: - Preview / edit toggles
+
+    private func togglePreview() {
+        guard let model = model else { return }
+        if model.isEditing { return }
+        model.showsPreview.toggle()
+        if model.showsPreview {
+            showPreview()
+        } else {
+            hidePreview()
+        }
+    }
+
+    private func showPreview() {
+        guard let panel = buildPreviewPanelIfNeeded() else { return }
+        positionPanels()
+        ignoreResign = true
+        panel.orderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
+    }
+
+    private func hidePreview() {
+        ignoreResign = true
+        previewPanel?.orderOut(nil)
+        mainPanel?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
+    }
+
+    private func beginEdit() {
+        guard let model = model else { return }
+        if !model.showsPreview {
+            model.showsPreview = true
+            _ = buildPreviewPanelIfNeeded()
+        }
+        model.editedText = model.currentPreviewText
+        model.isEditing = true
+        positionPanels()
+
+        ignoreResign = true
+        previewPanel?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
+        installEditingKeyMonitor()
+    }
+
+    private func cancelEdit() {
+        guard let model = model else { return }
+        removeEditingKeyMonitor()
+        model.isEditing = false
+        model.editedText = ""
+        // Per spec: Annulla / Esc closes the preview entirely.
+        model.showsPreview = false
+        ignoreResign = true
+        previewPanel?.orderOut(nil)
+        mainPanel?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
+    }
+
+    private func confirmEdit() {
+        guard let model = model else { return }
+        let text = model.editedText
+        removeEditingKeyMonitor()
+        pasteAndClose(text: text)
+    }
+
+    private func confirmSelection() {
+        guard let model = model else { return }
+        guard model.actions.indices.contains(model.selectedIndex) else { return }
+        commitAction(model.actions[model.selectedIndex])
+    }
+
+    private func commitAction(_ action: TextAction) {
+        guard let model = model else { return }
+        let text = action.transform(model.sourceText)
+        pasteAndClose(text: text)
+    }
+
+    private func handleEscape() {
+        guard let model = model else { return }
+        if model.showsPreview {
+            cancelEdit()
+        } else {
+            close()
+        }
+    }
+
+    // MARK: - Editing key monitor
+
+    private func installEditingKeyMonitor() {
+        removeEditingKeyMonitor()
+        editingKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self,
+                  let model = self.model,
+                  model.isEditing,
+                  event.window === self.previewPanel
+            else { return event }
+
+            switch Int(event.keyCode) {
+            case kVK_Return, kVK_ANSI_KeypadEnter:
+                if event.modifierFlags.contains(.shift) {
+                    DispatchQueue.main.async { self.confirmEdit() }
+                    return nil
+                }
+                return event
+            case kVK_Escape:
+                DispatchQueue.main.async { self.cancelEdit() }
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeEditingKeyMonitor() {
+        if let monitor = editingKeyMonitor {
+            NSEvent.removeMonitor(monitor)
+            editingKeyMonitor = nil
+        }
+    }
+
+    // MARK: - Paste
+
+    private func pasteAndClose(text: String) {
         let target = previousFrontmost
         close()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
@@ -123,18 +357,22 @@ final class PopupWindowController {
                 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                PasteSimulator.run(action: action)
+                PasteSimulator.paste(text: text)
             }
         }
     }
 }
 
+// MARK: - Panels
+
 final class PopupPanel: NSPanel {
-    var onMoveUp:   (() -> Void)?
-    var onMoveDown: (() -> Void)?
-    var onConfirm:  (() -> Void)?
-    var onCancel:   (() -> Void)?
-    var onNumber:   ((Int) -> Void)?
+    var onMoveUp:        (() -> Void)?
+    var onMoveDown:      (() -> Void)?
+    var onConfirm:       (() -> Void)?
+    var onCancel:        (() -> Void)?
+    var onNumber:        ((Int) -> Void)?
+    var onTogglePreview: (() -> Void)?
+    var onBeginEdit:     (() -> Void)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -149,6 +387,10 @@ final class PopupPanel: NSPanel {
             onConfirm?()
         case kVK_Escape:
             onCancel?()
+        case kVK_Space:
+            onTogglePreview?()
+        case kVK_Tab:
+            onBeginEdit?()
         default:
             if let chars = event.charactersIgnoringModifiers,
                chars.count == 1,
@@ -160,4 +402,9 @@ final class PopupPanel: NSPanel {
             }
         }
     }
+}
+
+final class PreviewPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }

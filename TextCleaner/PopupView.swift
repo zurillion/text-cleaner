@@ -2,7 +2,12 @@ import SwiftUI
 
 final class PopupViewModel: ObservableObject {
     @Published var selectedIndex: Int = 0
+    @Published var showsPreview: Bool = false
+    @Published var isEditing: Bool = false
+    @Published var editedText: String = ""
+
     let actions: [TextAction]
+    var sourceText: String = ""
 
     init(actions: [TextAction]) {
         self.actions = actions
@@ -16,6 +21,13 @@ final class PopupViewModel: ObservableObject {
     func moveDown() {
         guard !actions.isEmpty else { return }
         selectedIndex = (selectedIndex + 1) % actions.count
+    }
+
+    /// Text shown in the preview pane for the current state.
+    var currentPreviewText: String {
+        if isEditing { return editedText }
+        guard actions.indices.contains(selectedIndex) else { return "" }
+        return actions[selectedIndex].transform(sourceText)
     }
 }
 
@@ -38,6 +50,14 @@ struct PopupView: View {
                     row(index: index, action: action, theme: theme)
                 }
             }
+
+            HStack(spacing: 10) {
+                hint("⎵", "Preview")
+                hint("⇥", "Edit")
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 2)
         }
         .padding(10)
         .frame(width: 320)
@@ -84,10 +104,28 @@ struct PopupView: View {
         )
         .contentShape(Rectangle())
         .onHover { hovering in
-            if hovering { model.selectedIndex = index }
+            if hovering && !model.isEditing { model.selectedIndex = index }
         }
         .onTapGesture {
             onSelect(action)
         }
+    }
+
+    @ViewBuilder
+    private func hint(_ key: String, _ label: String) -> some View {
+        let theme = settings.theme
+        HStack(spacing: 4) {
+            Text(key)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(theme.foreground.opacity(0.10))
+                )
+            Text(label)
+                .font(.system(size: 10))
+        }
+        .foregroundStyle(theme.secondaryForeground)
     }
 }

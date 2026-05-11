@@ -1,27 +1,31 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Reads the current clipboard (plain text, falling back to RTF), applies a
-/// transformation, writes the result back to the pasteboard, simulates a ⌘V
-/// keystroke so the frontmost app receives a paste, and finally restores the
-/// original clipboard contents.
+/// Two responsibilities:
+///   - `readSourceText` snapshots the clipboard into a plain string the popup
+///     can use to drive previews and transformations.
+///   - `paste(text:)` puts a string on the clipboard, posts a synthetic ⌘V,
+///     and then restores the original pasteboard contents so the user's
+///     clipboard appears untouched.
 enum PasteSimulator {
     /// Delay after posting ⌘V before restoring the original clipboard.
     /// The receiving app needs time to read the pasteboard.
     private static let restoreDelay: TimeInterval = 0.4
 
-    static func run(action: TextAction) {
-        let pasteboard = NSPasteboard.general
-        guard let original = readText(from: pasteboard), !original.isEmpty else {
+    static func readSourceText() -> String? {
+        readText(from: NSPasteboard.general)
+    }
+
+    static func paste(text: String) {
+        guard !text.isEmpty else {
             NSSound.beep()
             return
         }
-
-        let transformed = action.transform(original)
+        let pasteboard = NSPasteboard.general
         let snapshot = snapshotItems(of: pasteboard)
 
         pasteboard.clearContents()
-        pasteboard.setString(transformed, forType: .string)
+        pasteboard.setString(text, forType: .string)
 
         sendCommandV()
 
@@ -29,6 +33,8 @@ enum PasteSimulator {
             restore(items: snapshot, to: pasteboard)
         }
     }
+
+    // MARK: - Private
 
     private static func readText(from pb: NSPasteboard) -> String? {
         if let plain = pb.string(forType: .string), !plain.isEmpty {
