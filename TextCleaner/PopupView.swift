@@ -80,6 +80,7 @@ struct PopupView: View {
             Text("Text Cleaner")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.secondaryForeground)
+                .allowsHitTesting(false)
             Spacer()
         }
         .frame(maxWidth: .infinity, minHeight: 22)

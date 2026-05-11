@@ -38,15 +38,24 @@ final class WindowDragHandleView: NSView {
 
     private var dragStart: NSPoint?
     private var firedBegan = false
+    private var dragging = false
 
     override func resetCursorRects() {
         super.resetCursorRects()
-        addCursorRect(bounds, cursor: .openHand)
+        // While dragging, suppress the openHand cursor rect: the window
+        // moves under the mouse and the system keeps re-asserting the rect's
+        // cursor at every cursor update, which would clobber the
+        // closedHand we pushed in mouseDown.
+        if !dragging {
+            addCursorRect(bounds, cursor: .openHand)
+        }
     }
 
     override func mouseDown(with event: NSEvent) {
         dragStart = NSEvent.mouseLocation
         firedBegan = false
+        dragging = true
+        window?.invalidateCursorRects(for: self)
         NSCursor.closedHand.push()
     }
 
@@ -63,6 +72,8 @@ final class WindowDragHandleView: NSView {
         guard dragStart != nil else { return }
         NSCursor.pop()
         dragStart = nil
+        dragging = false
+        window?.invalidateCursorRects(for: self)
         if firedBegan {
             firedBegan = false
             onEnded?()

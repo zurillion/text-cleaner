@@ -98,6 +98,10 @@ final class PopupWindowController {
             initialSize: NSSize(width: 340, height: 320),
             rootView: popupView
         )
+        // Don't let a click on the title-bar drag handle steal key from
+        // the preview while the user is editing. The panel still becomes
+        // key explicitly via makeKeyAndOrderFront on show()/hidePreview().
+        mainPanel.becomesKeyOnlyIfNeeded = true
         mainPanel.onMoveUp     = { [weak model] in model?.moveUp() }
         mainPanel.onMoveDown   = { [weak model] in model?.moveDown() }
         mainPanel.onConfirm    = { [weak self] in self?.confirmSelection() }
@@ -372,6 +376,19 @@ final class PopupWindowController {
         dragStartPreviewOrigin = nil
         // No auto re-centering. The user can re-center on demand via the
         // configurable center shortcut (AppSettings.centerShortcut).
+
+        // Restore the editor as key/first-responder if we were editing.
+        // mainPanel.becomesKeyOnlyIfNeeded should already prevent the
+        // drag from stealing key, but this is the safety net.
+        guard let model = model, model.isEditing else { return }
+        ignoreResign = true
+        previewPanel?.makeKeyAndOrderFront(nil)
+        if let textView = findRichTextView() {
+            previewPanel?.makeFirstResponder(textView)
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
     }
 
     // MARK: - Preview / edit toggles
