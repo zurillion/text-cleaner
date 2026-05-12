@@ -40,14 +40,27 @@ final class WindowDragHandleView: NSView {
     private var firedBegan = false
     private var dragging = false
 
-    override func resetCursorRects() {
-        super.resetCursorRects()
-        // While dragging, suppress the openHand cursor rect: the window
-        // moves under the mouse and the system keeps re-asserting the rect's
-        // cursor at every cursor update, which would clobber the
-        // closedHand we pushed in mouseDown.
-        if !dragging {
-            addCursorRect(bounds, cursor: .openHand)
+    // Use a tracking area with .activeAlways instead of addCursorRect:
+    // cursor rects only apply when the panel is the key window, so in
+    // edit mode (where the preview panel is key) the main popup wouldn't
+    // get the open-hand cursor on hover.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach { removeTrackingArea($0) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        if dragging {
+            NSCursor.closedHand.set()
+        } else {
+            NSCursor.openHand.set()
         }
     }
 
@@ -55,7 +68,6 @@ final class WindowDragHandleView: NSView {
         dragStart = NSEvent.mouseLocation
         firedBegan = false
         dragging = true
-        window?.invalidateCursorRects(for: self)
         NSCursor.closedHand.push()
     }
 
@@ -73,7 +85,6 @@ final class WindowDragHandleView: NSView {
         NSCursor.pop()
         dragStart = nil
         dragging = false
-        window?.invalidateCursorRects(for: self)
         if firedBegan {
             firedBegan = false
             onEnded?()

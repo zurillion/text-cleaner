@@ -162,7 +162,8 @@ final class PopupWindowController {
             model: model,
             settings: AppSettings.shared,
             onCancel: { [weak self] in self?.cancelEdit() },
-            onConfirm: { [weak self] in self?.confirmEdit() }
+            onConfirm: { [weak self] in self?.confirmEdit() },
+            onBeginEdit: { [weak self] in self?.beginEdit() }
         )
         let panel = makePanel(
             style: PreviewPanel.self,

@@ -5,6 +5,7 @@ struct PreviewView: View {
     @ObservedObject var settings: AppSettings
     let onCancel: () -> Void
     let onConfirm: () -> Void
+    let onBeginEdit: () -> Void
 
     var body: some View {
         let theme = settings.theme
@@ -65,7 +66,8 @@ struct PreviewView: View {
             theme: theme,
             onChange: model.isEditing ? { newValue in
                 model.editedAttributed = newValue
-            } : nil
+            } : nil,
+            onBeginEditRequested: model.isEditing ? nil : onBeginEdit
         )
         .frame(minHeight: 160, maxHeight: .infinity)
         .background(

@@ -25,6 +25,7 @@ struct RichTextView: NSViewRepresentable {
     let isEditable: Bool
     let theme: PopupTheme
     let onChange: ((NSAttributedString) -> Void)?
+    let onBeginEditRequested: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
@@ -36,7 +37,7 @@ struct RichTextView: NSViewRepresentable {
         scrollView.backgroundColor = .clear
         scrollView.appearance = theme.nsAppearance
 
-        let textView = NSTextView()
+        let textView = PreviewTextView()
         textView.isRichText = true
         textView.usesFontPanel = false
         textView.usesRuler = false
@@ -52,6 +53,7 @@ struct RichTextView: NSViewRepresentable {
         textView.autoresizingMask = [.width]
         textView.textContainer?.widthTracksTextView = true
         textView.delegate = context.coordinator
+        textView.onMouseDownWhenReadOnly = onBeginEditRequested
 
         scrollView.documentView = textView
 
@@ -77,6 +79,7 @@ struct RichTextView: NSViewRepresentable {
         textView.appearance = theme.nsAppearance
         textView.insertionPointColor = NSColor(theme.foreground)
         scrollView.appearance = theme.nsAppearance
+        (textView as? PreviewTextView)?.onMouseDownWhenReadOnly = onBeginEditRequested
 
         let defaultColor = NSColor(theme.foreground)
         var typing = textView.typingAttributes
@@ -129,6 +132,25 @@ struct RichTextView: NSViewRepresentable {
             lastInputValue = stripped
             parent.onChange?(stripped)
         }
+    }
+}
+
+// MARK: - Text view subclass
+
+/// NSTextView that, while read-only, treats a click as "I want to edit".
+/// The closure is invoked instead of forwarding the click to the normal
+/// selection machinery, so the controller can transition into edit mode
+/// without the click registering as a selection in the soon-to-be-edited
+/// text.
+final class PreviewTextView: NSTextView {
+    var onMouseDownWhenReadOnly: (() -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        if !isEditable, let callback = onMouseDownWhenReadOnly {
+            callback()
+            return
+        }
+        super.mouseDown(with: event)
     }
 }
 
