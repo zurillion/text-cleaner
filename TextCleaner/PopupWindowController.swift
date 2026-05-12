@@ -68,7 +68,11 @@ final class PopupWindowController {
         // Counterpart to the NSApp.hide(nil) in close(): if the previous
         // session ended via the Fonts-panel handoff path the app is
         // hidden, and makeKeyAndOrderFront alone wouldn't reveal it.
-        NSApp.unhide(nil)
+        // The plain unhide(_:) variant activates the app as a side
+        // effect even when it wasn't hidden, which would put us right
+        // back into the activation-race we're trying to avoid on the
+        // following confirm. unhideWithoutActivation is the safe call.
+        NSApp.unhideWithoutActivation()
         positionPanels()
         mainPanel.makeKeyAndOrderFront(nil)
     }
