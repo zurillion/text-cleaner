@@ -130,6 +130,10 @@ struct PopupView: View {
             if hovering && !model.isEditing { model.selectedIndex = index }
         }
         .onTapGesture {
+            // Don't let a stray click on the main popup discard an
+            // in-progress edit. The user must explicitly Annulla / Esc /
+            // Conferma / ⇧Return to leave edit mode.
+            guard !model.isEditing else { return }
             onSelect(action)
         }
     }
