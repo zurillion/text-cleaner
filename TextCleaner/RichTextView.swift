@@ -79,6 +79,14 @@ struct RichTextView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
+        // SwiftUI rebuilds the RichTextView struct (and its closures) on
+        // every render, but the Coordinator is created once and holds the
+        // initial parent. PreviewView creates us first with isEditing=false
+        // (so onChange is nil), then flips isEditing to true on the next
+        // render. Without refreshing parent here the delegate keeps calling
+        // the original nil onChange, so typing and font changes never
+        // propagate back into model.editedAttributed.
+        context.coordinator.parent = self
         textView.isEditable = isEditable
         textView.appearance = theme.nsAppearance
         textView.insertionPointColor = NSColor(theme.foreground)
