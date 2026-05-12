@@ -27,6 +27,15 @@ final class PopupWindowController {
     // between the main and preview panels.
     private var ignoreResign = false
 
+    // Set when the ⌘T handler called NSApp.activate() to make the Fonts
+    // panel responsive on the first click. Once we've forced ourselves
+    // to the foreground, NSRunningApplication.activate(target) alone is
+    // not enough to hand activation back — the system honours it only
+    // asynchronously, so the synthetic ⌘V from PasteSimulator can land
+    // in our own (now-empty) app and trigger the system beep. close()
+    // calls NSApp.hide(nil) in that case to force a clean handoff.
+    private var didActivateForFontPanel = false
+
     private let previewGap: CGFloat = 12
     private let defaultPreviewSize = NSSize(width: 420, height: 320)
 
@@ -56,6 +65,10 @@ final class PopupWindowController {
         previewPanel?.setContentSize(defaultPreviewSize)
         applyThemeAppearance()
 
+        // Counterpart to the NSApp.hide(nil) in close(): if the previous
+        // session ended via the Fonts-panel handoff path the app is
+        // hidden, and makeKeyAndOrderFront alone wouldn't reveal it.
+        NSApp.unhide(nil)
         positionPanels()
         mainPanel.makeKeyAndOrderFront(nil)
     }
@@ -74,10 +87,14 @@ final class PopupWindowController {
         clearFontManagerTarget()
         model?.isEditing = false
         model?.showsPreview = false
-        // If we activated the app while showing the Fonts panel, hand
-        // the active state back to whichever app the user was in.
-        if let target = previousFrontmost,
-           target.bundleIdentifier != Bundle.main.bundleIdentifier {
+        let forcedActive = didActivateForFontPanel
+        didActivateForFontPanel = false
+        if forcedActive {
+            // Synchronously yields activation so PasteSimulator's ⌘V
+            // lands in previousFrontmost rather than our own app.
+            NSApp.hide(nil)
+        } else if let target = previousFrontmost,
+                  target.bundleIdentifier != Bundle.main.bundleIdentifier {
             if #available(macOS 14.0, *) {
                 target.activate()
             } else {
@@ -578,6 +595,7 @@ final class PopupWindowController {
                         } else {
                             NSApp.activate(ignoringOtherApps: true)
                         }
+                        self.didActivateForFontPanel = true
                         panel.makeKeyAndOrderFront(nil)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                             self?.ignoreResign = false
