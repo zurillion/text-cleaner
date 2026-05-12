@@ -39,7 +39,11 @@ struct RichTextView: NSViewRepresentable {
 
         let textView = PreviewTextView()
         textView.isRichText = true
-        textView.usesFontPanel = false
+        // NSTextView ignores changeFont:/changeAttributes: from the
+        // Fonts panel unless this is true, even when NSFontManager's
+        // target is set explicitly. Without it ⌘T opens the panel but
+        // none of its controls affect the selection.
+        textView.usesFontPanel = true
         textView.usesRuler = false
         textView.usesInspectorBar = false
         textView.isEditable = isEditable
