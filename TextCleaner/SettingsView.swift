@@ -26,24 +26,30 @@ struct SettingsView: View {
 
     private var generalSection: some View {
         section(title: "General") {
-            Toggle(isOn: $settings.showDockIcon) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Show icon in Dock")
-                    Text("When off, Text Cleaner runs as a menu bar app only.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .toggleStyle(.switch)
-            Toggle(isOn: $settings.launchAtLogin) {
+            HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")
                     Text("Start Text Cleaner automatically after you log in to macOS.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
+                Toggle("", isOn: $settings.launchAtLogin)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
             }
-            .toggleStyle(.switch)
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show icon in Dock")
+                    Text("When off, Text Cleaner runs as a menu bar app only.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $settings.showDockIcon)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
         }
     }
 
