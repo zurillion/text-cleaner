@@ -35,6 +35,15 @@ struct SettingsView: View {
                 }
             }
             .toggleStyle(.switch)
+            Toggle(isOn: $settings.launchAtLogin) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Launch at login")
+                    Text("Start Text Cleaner automatically after you log in to macOS.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
         }
     }
 

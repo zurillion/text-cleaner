@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import Combine
 import Foundation
+import ServiceManagement
 
 extension Notification.Name {
     static let dockIconPreferenceChanged = Notification.Name("TextCleaner.dockIconChanged")
@@ -58,6 +59,18 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// Mirrors `SMAppService.mainApp.status`. We don't persist this to
+    /// UserDefaults because the system already tracks the registration
+    /// — the source of truth is SMAppService itself, queried at init.
+    @Published var launchAtLogin: Bool {
+        didSet {
+            guard launchAtLogin != oldValue, !suppressLaunchAtLoginSync else { return }
+            applyLaunchAtLogin(newValue: launchAtLogin, previous: oldValue)
+        }
+    }
+
+    private var suppressLaunchAtLoginSync = false
+
     static var defaultCenterShortcut: KeyboardShortcut {
         KeyboardShortcut(
             keyCode: UInt32(kVK_ANSI_C),
@@ -90,6 +103,42 @@ final class AppSettings: ObservableObject {
             self.actionPreferences = Self.decodePreferences(from: data)
         } else {
             self.actionPreferences = Self.defaultActionPreferences
+        }
+
+        self.launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    /// Refreshes `launchAtLogin` from the system. Call this when the
+    /// Settings window comes to the front so the toggle reflects any
+    /// changes the user made in System Settings → Login Items while
+    /// the app was running.
+    func refreshLaunchAtLogin() {
+        let actual = SMAppService.mainApp.status == .enabled
+        if actual != launchAtLogin {
+            suppressLaunchAtLoginSync = true
+            launchAtLogin = actual
+            suppressLaunchAtLoginSync = false
+        }
+    }
+
+    private func applyLaunchAtLogin(newValue: Bool, previous: Bool) {
+        let service = SMAppService.mainApp
+        do {
+            if newValue {
+                if service.status != .enabled {
+                    try service.register()
+                }
+            } else {
+                if service.status != .notRegistered {
+                    try service.unregister()
+                }
+            }
+        } catch {
+            NSLog("Text Cleaner: failed to update launch-at-login: \(error)")
+            // Roll back the published value without re-entering didSet.
+            suppressLaunchAtLoginSync = true
+            launchAtLogin = previous
+            suppressLaunchAtLoginSync = false
         }
     }
 
