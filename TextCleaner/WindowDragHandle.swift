@@ -3,10 +3,9 @@ import SwiftUI
 
 /// SwiftUI wrapper around a custom NSView that drives a window-drag
 /// gesture. The view:
-///   - shows an "open hand" cursor while the mouse hovers over it
-///     (via `addCursorRect`),
-///   - pushes the "closed hand" cursor on mouse down and pops it on
-///     mouse up,
+///   - shows an "open hand" cursor while the mouse hovers over it,
+///   - replaces it with the "closed hand" cursor on mouse down and
+///     restores open-hand on mouse up,
 ///   - reports the *screen* mouse location (NSEvent.mouseLocation) to
 ///     the controller for began / changed / ended, so the controller can
 ///     reposition windows using absolute coordinates regardless of how
@@ -39,19 +38,19 @@ final class WindowDragHandleView: NSView {
     private var dragStart: NSPoint?
     private var firedBegan = false
     private var dragging = false
+    private var hoverPushed = false
 
-    // Use a tracking area with .activeAlways instead of addCursorRect:
-    // cursor rects only apply when the panel is the key window, so in
-    // edit mode (where the preview panel is key) the main popup wouldn't
-    // get the open-hand cursor on hover.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         trackingAreas.forEach { removeTrackingArea($0) }
+        // .activeAlways: tracking fires regardless of whether the panel
+        // is key (we need this in edit mode, where the preview panel is
+        // key and the main popup isn't).
         let area = NSTrackingArea(
             rect: bounds,
             options: [
-                .cursorUpdate,
                 .mouseEnteredAndExited,
+                .cursorUpdate,
                 .activeAlways,
                 .inVisibleRect,
             ],
@@ -61,19 +60,23 @@ final class WindowDragHandleView: NSView {
         addTrackingArea(area)
     }
 
-    override func cursorUpdate(with event: NSEvent) {
-        applyCursor()
-    }
+    // MARK: - Cursor management
+    //
+    // We use NSCursor.push/pop rather than NSCursor.set/cursorUpdate
+    // alone: push leaves the cursor on a stack so SwiftUI's hosting and
+    // other cursor consumers can't transparently override it. cursorUpdate
+    // is kept as a safety net for the in-area movements.
 
-    // Belt-and-suspenders for the cursorUpdate path: when the mouse enters
-    // the area (especially crossing in from another window whose first
-    // responder is an NSTextView with its own I-beam cursor rect), set
-    // the cursor explicitly so it doesn't stay stuck on I-beam.
     override func mouseEntered(with event: NSEvent) {
-        applyCursor()
+        pushHoverCursor()
     }
 
-    private func applyCursor() {
+    override func mouseExited(with event: NSEvent) {
+        popHoverCursor()
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        // Belt-and-suspenders: re-assert cursor on every cursorUpdate.
         if dragging {
             NSCursor.closedHand.set()
         } else {
@@ -81,10 +84,26 @@ final class WindowDragHandleView: NSView {
         }
     }
 
+    private func pushHoverCursor() {
+        guard !hoverPushed, !dragging else { return }
+        hoverPushed = true
+        NSCursor.openHand.push()
+    }
+
+    private func popHoverCursor() {
+        guard hoverPushed, !dragging else { return }
+        hoverPushed = false
+        NSCursor.pop()
+    }
+
     override func mouseDown(with event: NSEvent) {
         dragStart = NSEvent.mouseLocation
         firedBegan = false
         dragging = true
+        if hoverPushed {
+            NSCursor.pop()
+            hoverPushed = false
+        }
         NSCursor.closedHand.push()
     }
 
@@ -99,12 +118,25 @@ final class WindowDragHandleView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         guard dragStart != nil else { return }
-        NSCursor.pop()
+        NSCursor.pop()  // closedHand
         dragStart = nil
         dragging = false
+        // If the mouse is still inside our area, re-push openHand so
+        // hovering after release continues to show the hand.
+        if isMouseInside() {
+            NSCursor.openHand.push()
+            hoverPushed = true
+        }
         if firedBegan {
             firedBegan = false
             onEnded?()
         }
+    }
+
+    private func isMouseInside() -> Bool {
+        guard let window = window else { return false }
+        let mouseInWindow = window.mouseLocationOutsideOfEventStream
+        let local = convert(mouseInWindow, from: nil)
+        return bounds.contains(local)
     }
 }

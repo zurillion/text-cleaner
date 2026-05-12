@@ -521,7 +521,15 @@ final class PopupWindowController {
                     }
                     return nil
                 case kVK_ANSI_T:
-                    NSFontManager.shared.orderFrontFontPanel(nil)
+                    // NSFontPanel's default level is normalWindow (0), but
+                    // our preview panel sits at .floating (3) — without
+                    // raising the panel's level it would appear behind us
+                    // and look like nothing happened. Bring it to the
+                    // same level and order in front.
+                    if let panel = NSFontManager.shared.fontPanel(create: true) {
+                        panel.level = .floating
+                        panel.orderFront(nil)
+                    }
                     return nil
                 default:
                     break
