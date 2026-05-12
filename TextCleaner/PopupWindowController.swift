@@ -54,6 +54,7 @@ final class PopupWindowController {
 
         previousFrontmost = NSWorkspace.shared.frontmostApplication
 
+        model.actions = Self.enabledActions()
         model.sourceAttributed = PasteSimulator.readSourceAttributed()
         model.selectedIndex = 0
         model.showsPreview = false
@@ -113,8 +114,8 @@ final class PopupWindowController {
     // MARK: - Build
 
     private func build() {
-        let actions = TextAction.all
-        let model = PopupViewModel(actions: actions)
+        let model = PopupViewModel()
+        model.actions = Self.enabledActions()
         self.model = model
 
         let popupView = PopupView(
@@ -645,6 +646,17 @@ final class PopupWindowController {
             if let found = firstTextView(in: sub) { return found }
         }
         return nil
+    }
+
+    /// Resolves the user's saved preferences into the ordered list of
+    /// enabled actions shown in the popup. Numeric shortcuts map to
+    /// this list by position, so disabling or reordering in Settings
+    /// is reflected automatically the next time the popup is shown.
+    private static func enabledActions() -> [TextAction] {
+        let byKind = Dictionary(uniqueKeysWithValues: TextAction.all.map { ($0.kind, $0) })
+        return AppSettings.shared.actionPreferences
+            .filter(\.enabled)
+            .compactMap { byKind[$0.kind] }
     }
 
     // MARK: - Paste

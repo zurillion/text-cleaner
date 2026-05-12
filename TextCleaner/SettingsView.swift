@@ -88,25 +88,95 @@ struct SettingsView: View {
     private var actionsSection: some View {
         section(title: "Actions") {
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(TextAction.all.enumerated()), id: \.element.id) { index, action in
-                    HStack(spacing: 10) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .frame(width: 18, height: 18)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.primary.opacity(0.08))
-                            )
-                            .foregroundStyle(.secondary)
-                        Image(systemName: action.icon)
-                            .frame(width: 18)
-                            .foregroundStyle(.secondary)
-                        Text(action.title)
-                        Spacer()
+                ForEach(Array(settings.actionPreferences.enumerated()), id: \.element.kind) { index, pref in
+                    actionRow(index: index, pref: pref)
+                }
+                HStack {
+                    Text("The number is the keyboard shortcut while the popup is open. Disabled actions don't get a number; reordering changes which one is 1, 2, 3, …")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button("Reset") {
+                        settings.actionPreferences = AppSettings.defaultActionPreferences
                     }
                 }
+                .padding(.top, 4)
             }
         }
+    }
+
+    @ViewBuilder
+    private func actionRow(index: Int, pref: ActionPreference) -> some View {
+        let action = TextAction.all.first { $0.kind == pref.kind }
+        let position = positionLabel(for: pref)
+        let count = settings.actionPreferences.count
+        HStack(spacing: 10) {
+            Text(position)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .frame(width: 18, height: 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.primary.opacity(pref.enabled ? 0.08 : 0.04))
+                )
+                .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
+            Image(systemName: action?.icon ?? "questionmark")
+                .frame(width: 18)
+                .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
+            Text(action?.title ?? pref.kind.rawValue)
+                .foregroundStyle(pref.enabled ? Color.primary : Color.secondary)
+            Spacer()
+            Button {
+                move(from: index, to: index - 1)
+            } label: {
+                Image(systemName: "chevron.up")
+            }
+            .buttonStyle(.borderless)
+            .disabled(index == 0)
+            Button {
+                move(from: index, to: index + 1)
+            } label: {
+                Image(systemName: "chevron.down")
+            }
+            .buttonStyle(.borderless)
+            .disabled(index == count - 1)
+            Toggle("", isOn: enabledBinding(for: pref.kind))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+    }
+
+    private func positionLabel(for pref: ActionPreference) -> String {
+        guard pref.enabled else { return "·" }
+        let enabledKinds = settings.actionPreferences.filter(\.enabled).map(\.kind)
+        if let idx = enabledKinds.firstIndex(of: pref.kind) {
+            return "\(idx + 1)"
+        }
+        return "·"
+    }
+
+    private func enabledBinding(for kind: TextActionKind) -> Binding<Bool> {
+        Binding(
+            get: {
+                settings.actionPreferences.first { $0.kind == kind }?.enabled ?? false
+            },
+            set: { newValue in
+                guard let idx = settings.actionPreferences.firstIndex(where: { $0.kind == kind })
+                else { return }
+                settings.actionPreferences[idx].enabled = newValue
+            }
+        )
+    }
+
+    private func move(from source: Int, to destination: Int) {
+        var prefs = settings.actionPreferences
+        guard prefs.indices.contains(source),
+              prefs.indices.contains(destination),
+              source != destination else { return }
+        let moved = prefs.remove(at: source)
+        prefs.insert(moved, at: destination)
+        settings.actionPreferences = prefs
     }
 
     private var permissionsSection: some View {
