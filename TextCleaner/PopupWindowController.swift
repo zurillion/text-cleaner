@@ -71,8 +71,19 @@ final class PopupWindowController {
         previewPanel?.orderOut(nil)
         mainPanel?.orderOut(nil)
         removeEditingKeyMonitor()
+        clearFontManagerTarget()
         model?.isEditing = false
         model?.showsPreview = false
+        // If we activated the app while showing the Fonts panel, hand
+        // the active state back to whichever app the user was in.
+        if let target = previousFrontmost,
+           target.bundleIdentifier != Bundle.main.bundleIdentifier {
+            if #available(macOS 14.0, *) {
+                target.activate()
+            } else {
+                target.activate(options: [.activateIgnoringOtherApps])
+            }
+        }
         DispatchQueue.main.async { [weak self] in
             self?.ignoreResign = false
         }
@@ -442,11 +453,20 @@ final class PopupWindowController {
             self?.ignoreResign = false
         }
         installEditingKeyMonitor()
+        // Route font/attribute changes from the system Fonts/Colors
+        // panels straight to the text view: when those panels become
+        // key, the text view loses first responder, so the default
+        // responder-chain dispatch from NSFontManager wouldn't reach
+        // it any more.
+        if let textView = findRichTextView() {
+            NSFontManager.shared.target = textView
+        }
     }
 
     private func cancelEdit() {
         guard let model = model else { return }
         removeEditingKeyMonitor()
+        clearFontManagerTarget()
         model.isEditing = false
         model.editedAttributed = NSAttributedString()
         // Per spec: Annulla / Esc closes the preview entirely.
@@ -463,7 +483,15 @@ final class PopupWindowController {
         guard let model = model else { return }
         let attributed = model.editedAttributed
         removeEditingKeyMonitor()
+        clearFontManagerTarget()
         pasteAndClose(attributed: attributed)
+    }
+
+    private func clearFontManagerTarget() {
+        if let tv = NSFontManager.shared.target as? NSTextView,
+           tv === findRichTextView() {
+            NSFontManager.shared.target = nil
+        }
     }
 
     private func confirmSelection() {
@@ -528,6 +556,12 @@ final class PopupWindowController {
                     // raise the level to ours (.floating), and use
                     // makeKeyAndOrderFront to guarantee visibility.
                     //
+                    // We also activate the app: our panels are
+                    // .nonactivatingPanel and don't put the app in the
+                    // active state, so NSFontPanel's first click would
+                    // otherwise be eaten by the panel-activation step,
+                    // forcing the user to click twice to interact.
+                    //
                     // Suppress the auto-close while the key window
                     // transitions from preview → fontPanel; otherwise
                     // scheduleResignCheck can run on a runloop where
@@ -539,8 +573,13 @@ final class PopupWindowController {
                             panel.center()
                         }
                         self.ignoreResign = true
+                        if #available(macOS 14.0, *) {
+                            NSApp.activate()
+                        } else {
+                            NSApp.activate(ignoringOtherApps: true)
+                        }
                         panel.makeKeyAndOrderFront(nil)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                             self?.ignoreResign = false
                         }
                     }
