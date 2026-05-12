@@ -142,8 +142,18 @@ struct RichTextView: NSViewRepresentable {
 /// selection machinery, so the controller can transition into edit mode
 /// without the click registering as a selection in the soon-to-be-edited
 /// text.
+///
+/// `acceptsFirstMouse` is overridden so the FIRST click on the preview
+/// panel (while it isn't yet key) delivers a mouseDown to us. Without
+/// this override the default behaviour is to silently activate the
+/// window and discard the click, forcing the user to click twice to
+/// enter edit mode.
 final class PreviewTextView: NSTextView {
     var onMouseDownWhenReadOnly: (() -> Void)?
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
 
     override func mouseDown(with event: NSEvent) {
         if !isEditable, let callback = onMouseDownWhenReadOnly {

@@ -49,7 +49,12 @@ final class WindowDragHandleView: NSView {
         trackingAreas.forEach { removeTrackingArea($0) }
         let area = NSTrackingArea(
             rect: bounds,
-            options: [.cursorUpdate, .activeAlways, .inVisibleRect],
+            options: [
+                .cursorUpdate,
+                .mouseEnteredAndExited,
+                .activeAlways,
+                .inVisibleRect,
+            ],
             owner: self,
             userInfo: nil
         )
@@ -57,6 +62,18 @@ final class WindowDragHandleView: NSView {
     }
 
     override func cursorUpdate(with event: NSEvent) {
+        applyCursor()
+    }
+
+    // Belt-and-suspenders for the cursorUpdate path: when the mouse enters
+    // the area (especially crossing in from another window whose first
+    // responder is an NSTextView with its own I-beam cursor rect), set
+    // the cursor explicitly so it doesn't stay stuck on I-beam.
+    override func mouseEntered(with event: NSEvent) {
+        applyCursor()
+    }
+
+    private func applyCursor() {
         if dragging {
             NSCursor.closedHand.set()
         } else {
