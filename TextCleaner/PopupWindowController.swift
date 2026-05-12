@@ -526,7 +526,7 @@ final class PopupWindowController {
                     // raising the panel's level it would appear behind us
                     // and look like nothing happened. Bring it to the
                     // same level and order in front.
-                    if let panel = NSFontManager.shared.fontPanel(create: true) {
+                    if let panel = NSFontManager.shared.fontPanel(true) {
                         panel.level = .floating
                         panel.orderFront(nil)
                     }
