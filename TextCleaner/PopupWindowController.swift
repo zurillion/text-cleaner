@@ -527,12 +527,22 @@ final class PopupWindowController {
                     // off-screen. Center if it has never been positioned,
                     // raise the level to ours (.floating), and use
                     // makeKeyAndOrderFront to guarantee visibility.
+                    //
+                    // Suppress the auto-close while the key window
+                    // transitions from preview → fontPanel; otherwise
+                    // scheduleResignCheck can run on a runloop where
+                    // NSApp.keyWindow hasn't settled yet and tear the
+                    // popup down before the panel is actually key.
                     if let panel = NSFontManager.shared.fontPanel(true) {
                         panel.level = .floating
                         if !panel.isVisible {
                             panel.center()
                         }
+                        self.ignoreResign = true
                         panel.makeKeyAndOrderFront(nil)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                            self?.ignoreResign = false
+                        }
                     }
                     return nil
                 default:
