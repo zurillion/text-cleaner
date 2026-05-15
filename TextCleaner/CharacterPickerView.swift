@@ -23,6 +23,10 @@ final class CharacterPickerModel: ObservableObject {
     /// Updated by the view when the window resizes so arrow Up/Down
     /// jumps match the visible grid.
     @Published var columns: Int = 12
+    /// Refreshed by the controller on each `show()` from
+    /// `AppSettings.recentPickedCharacters`. Rendered as a dynamic
+    /// section above the static catalog when non-empty.
+    @Published var recents: [CharacterEntry] = []
 
     init(sections: [CharacterSection] = CharacterCatalog.sections) {
         self.sections = sections
@@ -30,10 +34,22 @@ final class CharacterPickerModel: ObservableObject {
 
     // MARK: - Filter
 
+    /// All sections in display order — Recent first (when populated)
+    /// followed by the static catalog.
+    private var displayedSections: [CharacterSection] {
+        var result: [CharacterSection] = []
+        if !recents.isEmpty {
+            result.append(CharacterSection(title: "Recent", entries: recents))
+        }
+        result.append(contentsOf: sections)
+        return result
+    }
+
     var filteredSections: [CharacterSection] {
-        guard !query.isEmpty else { return sections }
+        let base = displayedSections
+        guard !query.isEmpty else { return base }
         let q = query.lowercased()
-        return sections.compactMap { section in
+        return base.compactMap { section in
             let filtered = section.entries.filter { matches($0, query: q) }
             guard !filtered.isEmpty else { return nil }
             return CharacterSection(title: section.title, entries: filtered)

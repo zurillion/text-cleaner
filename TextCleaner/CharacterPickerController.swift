@@ -32,6 +32,12 @@ final class CharacterPickerController {
         model.selectedIndex = 0
         model.hoverIndex = nil
         model.query = ""
+        // Refresh recents from persisted settings each time the picker
+        // opens — captures any picks made via earlier opens of this
+        // app session and survives restarts.
+        model.recents = AppSettings.shared.recentPickedCharacters.map {
+            CharacterCatalog.entry(for: $0)
+        }
 
         applyThemeAppearance()
         recenter()
@@ -213,6 +219,7 @@ final class CharacterPickerController {
     }
 
     private func commit(character: String) {
+        AppSettings.shared.recordPickedCharacter(character)
         // close() orders the panel out and reactivates previousFrontmost
         // synchronously; the small delay before paste lets that handoff
         // settle so the synthetic ⌘V lands in the target rather than

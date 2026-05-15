@@ -24,6 +24,22 @@ struct CharacterSection: Identifiable {
 /// keeps the section break visible in the layout. Entries marked with a
 /// description show that text in the header bar when selected.
 enum CharacterCatalog {
+    /// Looks up the first catalog entry whose character matches. Used to
+    /// hydrate the Recent section: we only persist the character itself
+    /// in UserDefaults, then on each picker open we re-attach the
+    /// catalog's description so the header still labels it nicely.
+    /// If the character isn't in the catalog (e.g. an old recent for a
+    /// glyph that was removed), returns a plain entry without a
+    /// description rather than dropping it entirely.
+    static func entry(for character: String) -> CharacterEntry {
+        for section in sections {
+            if let match = section.entries.first(where: { $0.character == character }) {
+                return CharacterEntry(match.character, match.description)
+            }
+        }
+        return CharacterEntry(character)
+    }
+
     static let sections: [CharacterSection] = [
         CharacterSection(title: "Greek Alphabet", entries: greek),
         CharacterSection(title: "Superscript", entries: superscript),

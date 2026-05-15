@@ -25,12 +25,17 @@ final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     private enum Key {
-        static let showDockIcon       = "TextCleaner.showDockIcon"
-        static let popupTheme         = "TextCleaner.popupTheme"
-        static let centerShortcut     = "TextCleaner.centerShortcut"
-        static let actionPreferences  = "TextCleaner.actionPreferences"
-        static let pickerShortcut     = "TextCleaner.pickerShortcut"
+        static let showDockIcon              = "TextCleaner.showDockIcon"
+        static let popupTheme                = "TextCleaner.popupTheme"
+        static let centerShortcut            = "TextCleaner.centerShortcut"
+        static let actionPreferences         = "TextCleaner.actionPreferences"
+        static let pickerShortcut            = "TextCleaner.pickerShortcut"
+        static let recentPickedCharacters    = "TextCleaner.recentPickedCharacters"
     }
+
+    /// How many entries the picker's Recent section keeps. Pushing a
+    /// new pick beyond this drops the oldest entry.
+    static let recentCharactersLimit = 15
 
     @Published var showDockIcon: Bool {
         didSet {
@@ -61,6 +66,27 @@ final class AppSettings: ObservableObject {
             }
             NotificationCenter.default.post(name: .pickerHotKeyChanged, object: nil)
         }
+    }
+
+    /// Characters the user most recently picked, newest first, capped
+    /// at `recentCharactersLimit`. Persisted as a plain `[String]` in
+    /// UserDefaults.
+    @Published var recentPickedCharacters: [String] {
+        didSet {
+            UserDefaults.standard.set(recentPickedCharacters, forKey: Key.recentPickedCharacters)
+        }
+    }
+
+    /// LRU-style record: pull the pick to the front and drop the
+    /// oldest if we're past the limit.
+    func recordPickedCharacter(_ character: String) {
+        var list = recentPickedCharacters
+        list.removeAll { $0 == character }
+        list.insert(character, at: 0)
+        if list.count > Self.recentCharactersLimit {
+            list = Array(list.prefix(Self.recentCharactersLimit))
+        }
+        recentPickedCharacters = list
     }
 
     @Published var actionPreferences: [ActionPreference] {
@@ -124,6 +150,9 @@ final class AppSettings: ObservableObject {
         } else {
             self.pickerShortcut = Self.defaultPickerShortcut
         }
+
+        self.recentPickedCharacters =
+            defaults.stringArray(forKey: Key.recentPickedCharacters) ?? []
 
         if let data = defaults.data(forKey: Key.actionPreferences) {
             self.actionPreferences = Self.decodePreferences(from: data)
