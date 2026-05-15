@@ -10,15 +10,18 @@ final class CharacterPickerController {
     private var panel: PickerPanel?
     private var model: CharacterPickerModel?
     private var resignObserver: NSObjectProtocol?
+    private var resizeObserver: NSObjectProtocol?
+    private var keyMonitor: Any?
     private weak var previousFrontmost: NSRunningApplication?
     private var ignoreResign = false
 
-    private let columns: Int = 12
+    private let defaultSize = NSSize(width: 460, height: 460)
 
     deinit {
-        if let observer = resignObserver {
+        for observer in [resignObserver, resizeObserver].compactMap({ $0 }) {
             NotificationCenter.default.removeObserver(observer)
         }
+        removeKeyMonitor()
     }
 
     func show() {
@@ -28,15 +31,18 @@ final class CharacterPickerController {
         previousFrontmost = NSWorkspace.shared.frontmostApplication
         model.selectedIndex = 0
         model.hoverIndex = nil
+        model.query = ""
 
         applyThemeAppearance()
-        positionPanel()
+        recenter()
         NSApp.unhideWithoutActivation()
         panel.makeKeyAndOrderFront(nil)
+        installKeyMonitor()
     }
 
     func close() {
         ignoreResign = true
+        removeKeyMonitor()
         panel?.orderOut(nil)
         if let target = previousFrontmost,
            target.bundleIdentifier != Bundle.main.bundleIdentifier {
@@ -70,8 +76,8 @@ final class CharacterPickerController {
         )
 
         let panel = PickerPanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: 460, height: 460)),
-            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
+            contentRect: NSRect(origin: .zero, size: defaultSize),
+            styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -83,6 +89,7 @@ final class CharacterPickerController {
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.minSize = NSSize(width: 320, height: 260)
 
         let hosting = NSHostingView(rootView: view)
         hosting.translatesAutoresizingMaskIntoConstraints = false
@@ -96,20 +103,7 @@ final class CharacterPickerController {
             hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
         panel.contentView = container
-        panel.setContentSize(hosting.fittingSize)
-
-        panel.onMoveLeft   = { [weak model] in model?.moveLeft() }
-        panel.onMoveRight  = { [weak model] in model?.moveRight() }
-        panel.onMoveUp     = { [weak model, weak self] in
-            guard let self = self else { return }
-            model?.moveUp(columns: self.columns)
-        }
-        panel.onMoveDown   = { [weak model, weak self] in
-            guard let self = self else { return }
-            model?.moveDown(columns: self.columns)
-        }
-        panel.onConfirm    = { [weak self] in self?.commitCurrent() }
-        panel.onCancel     = { [weak self] in self?.close() }
+        panel.setContentSize(defaultSize)
 
         resignObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification,
@@ -117,6 +111,13 @@ final class CharacterPickerController {
             queue: .main
         ) { [weak self] _ in
             self?.scheduleResignCheck()
+        }
+        resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didEndLiveResizeNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            self?.recenter(animated: true)
         }
 
         self.panel = panel
@@ -133,7 +134,7 @@ final class CharacterPickerController {
 
     // MARK: - Positioning
 
-    private func positionPanel() {
+    private func recenter(animated: Bool = false) {
         guard let panel = panel, let screen = NSScreen.main else { return }
         panel.layoutIfNeeded()
         let size = panel.frame.size
@@ -142,7 +143,63 @@ final class CharacterPickerController {
             x: visible.midX - size.width / 2,
             y: visible.midY - size.height / 2 + visible.height * 0.05
         )
-        panel.setFrameOrigin(origin)
+        panel.setFrame(
+            NSRect(origin: origin, size: size),
+            display: true,
+            animate: animated
+        )
+    }
+
+    // MARK: - Key monitor
+    //
+    // The picker's search field captures keyDown via SwiftUI's TextField,
+    // so plain key handling on the panel wouldn't see arrows, Return or
+    // Escape while the field is focused. A local NSEvent monitor sees
+    // events before they reach the focused responder, so we can route
+    // navigation keys to the model regardless of focus and still let
+    // letters fall through to the field for the actual filter typing.
+
+    private func installKeyMonitor() {
+        removeKeyMonitor()
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self,
+                  event.window === self.panel,
+                  let model = self.model
+            else { return event }
+
+            switch Int(event.keyCode) {
+            case kVK_LeftArrow:
+                model.moveLeft();  return nil
+            case kVK_RightArrow:
+                model.moveRight(); return nil
+            case kVK_UpArrow:
+                model.moveUp();    return nil
+            case kVK_DownArrow:
+                model.moveDown();  return nil
+            case kVK_Return, kVK_ANSI_KeypadEnter:
+                self.commitCurrent()
+                return nil
+            case kVK_Escape:
+                // If the user typed a query first, the natural mental
+                // model is "Esc clears the search"; only the second Esc
+                // closes the picker.
+                if !(model.query.isEmpty) {
+                    model.query = ""
+                    return nil
+                }
+                self.close()
+                return nil
+            default:
+                return event
+            }
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 
     // MARK: - Commit
@@ -156,24 +213,13 @@ final class CharacterPickerController {
     }
 
     private func commit(character: String) {
-        let target = previousFrontmost
-        ignoreResign = true
-        panel?.orderOut(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
-            if let target = target,
-               target.bundleIdentifier != Bundle.main.bundleIdentifier {
-                if #available(macOS 14.0, *) {
-                    target.activate()
-                } else {
-                    target.activate(options: [.activateIgnoringOtherApps])
-                }
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                PasteSimulator.paste(attributed: NSAttributedString(string: character))
-            }
-        }
-        DispatchQueue.main.async { [weak self] in
-            self?.ignoreResign = false
+        // close() orders the panel out and reactivates previousFrontmost
+        // synchronously; the small delay before paste lets that handoff
+        // settle so the synthetic ⌘V lands in the target rather than
+        // our app.
+        close()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            PasteSimulator.paste(attributed: NSAttributedString(string: character))
         }
     }
 }
@@ -181,28 +227,6 @@ final class CharacterPickerController {
 // MARK: - Panel
 
 final class PickerPanel: NSPanel {
-    var onMoveLeft:  (() -> Void)?
-    var onMoveRight: (() -> Void)?
-    var onMoveUp:    (() -> Void)?
-    var onMoveDown:  (() -> Void)?
-    var onConfirm:   (() -> Void)?
-    var onCancel:    (() -> Void)?
-
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
-
-    override func keyDown(with event: NSEvent) {
-        switch Int(event.keyCode) {
-        case kVK_LeftArrow:  onMoveLeft?()
-        case kVK_RightArrow: onMoveRight?()
-        case kVK_UpArrow:    onMoveUp?()
-        case kVK_DownArrow:  onMoveDown?()
-        case kVK_Return, kVK_ANSI_KeypadEnter:
-            onConfirm?()
-        case kVK_Escape:
-            onCancel?()
-        default:
-            super.keyDown(with: event)
-        }
-    }
 }
