@@ -65,6 +65,15 @@ struct SettingsView: View {
                 }
             }
             HStack {
+                Text("Unicode picker")
+                Spacer()
+                ShortcutRecorder(shortcut: $settings.pickerShortcut)
+                    .frame(width: 180, height: 24)
+                Button("Reset") {
+                    settings.pickerShortcut = AppSettings.defaultPickerShortcut
+                }
+            }
+            HStack {
                 Text("Re-center popup")
                 Spacer()
                 ShortcutRecorder(shortcut: $settings.centerShortcut)

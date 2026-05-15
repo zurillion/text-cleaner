@@ -6,6 +6,7 @@ import ServiceManagement
 
 extension Notification.Name {
     static let dockIconPreferenceChanged = Notification.Name("TextCleaner.dockIconChanged")
+    static let pickerHotKeyChanged = Notification.Name("TextCleaner.pickerHotKeyChanged")
 }
 
 /// User-overridable configuration for one of the built-in actions:
@@ -28,6 +29,7 @@ final class AppSettings: ObservableObject {
         static let popupTheme         = "TextCleaner.popupTheme"
         static let centerShortcut     = "TextCleaner.centerShortcut"
         static let actionPreferences  = "TextCleaner.actionPreferences"
+        static let pickerShortcut     = "TextCleaner.pickerShortcut"
     }
 
     @Published var showDockIcon: Bool {
@@ -48,6 +50,16 @@ final class AppSettings: ObservableObject {
             if let data = try? JSONEncoder().encode(centerShortcut) {
                 UserDefaults.standard.set(data, forKey: Key.centerShortcut)
             }
+        }
+    }
+
+    /// Global hotkey that opens the Unicode picker window.
+    @Published var pickerShortcut: KeyboardShortcut {
+        didSet {
+            if let data = try? JSONEncoder().encode(pickerShortcut) {
+                UserDefaults.standard.set(data, forKey: Key.pickerShortcut)
+            }
+            NotificationCenter.default.post(name: .pickerHotKeyChanged, object: nil)
         }
     }
 
@@ -78,6 +90,13 @@ final class AppSettings: ObservableObject {
         )
     }
 
+    static var defaultPickerShortcut: KeyboardShortcut {
+        KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_U),
+            modifierFlags: [.control, .option, .command]
+        )
+    }
+
     static var defaultActionPreferences: [ActionPreference] {
         TextActionKind.allCases.map { ActionPreference(kind: $0, enabled: true) }
     }
@@ -97,6 +116,13 @@ final class AppSettings: ObservableObject {
             self.centerShortcut = decoded
         } else {
             self.centerShortcut = Self.defaultCenterShortcut
+        }
+
+        if let data = defaults.data(forKey: Key.pickerShortcut),
+           let decoded = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
+            self.pickerShortcut = decoded
+        } else {
+            self.pickerShortcut = Self.defaultPickerShortcut
         }
 
         if let data = defaults.data(forKey: Key.actionPreferences) {

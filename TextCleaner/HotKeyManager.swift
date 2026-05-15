@@ -1,47 +1,72 @@
 import AppKit
 import Carbon.HIToolbox
 
-/// Registers a single global hotkey via Carbon's RegisterEventHotKey and
-/// invokes a handler on the main queue when the hotkey fires.
+/// Registers one or more global hotkeys via Carbon's RegisterEventHotKey
+/// and invokes the matching handler on the main queue when each fires.
+/// Hotkeys are keyed by a caller-supplied name so they can be re-registered
+/// (when the user changes a shortcut in Settings) without affecting other
+/// hotkeys owned by the same manager.
 final class HotKeyManager {
-    private let handler: () -> Void
-    private var hotKeyRef: EventHotKeyRef?
+    private struct Registration {
+        let id: UInt32
+        let handler: () -> Void
+        var hotKeyRef: EventHotKeyRef?
+    }
+
+    private var registrations: [String: Registration] = [:]
     private var eventHandlerRef: EventHandlerRef?
     private static let signature: OSType = 0x54584343 // 'TXCC'
     private static var nextID: UInt32 = 1
 
-    init(handler: @escaping () -> Void) {
-        self.handler = handler
+    init() {
         installEventHandler()
     }
 
     deinit {
-        if let ref = hotKeyRef { UnregisterEventHotKey(ref) }
+        for reg in registrations.values {
+            if let ref = reg.hotKeyRef { UnregisterEventHotKey(ref) }
+        }
         if let h = eventHandlerRef { RemoveEventHandler(h) }
     }
 
-    func register(with shortcut: KeyboardShortcut) {
-        if let ref = hotKeyRef {
-            UnregisterEventHotKey(ref)
-            hotKeyRef = nil
-        }
-        let id = EventHotKeyID(signature: Self.signature, id: Self.nextID)
+    func register(
+        name: String,
+        shortcut: KeyboardShortcut,
+        handler: @escaping () -> Void
+    ) {
+        unregister(name: name)
+
+        let id = Self.nextID
         Self.nextID &+= 1
 
         var ref: EventHotKeyRef?
         let status = RegisterEventHotKey(
             shortcut.keyCode,
             shortcut.carbonModifiers,
-            id,
+            EventHotKeyID(signature: Self.signature, id: id),
             GetApplicationEventTarget(),
             0,
             &ref
         )
-        if status == noErr {
-            hotKeyRef = ref
-        } else {
-            NSLog("TextCleaner: RegisterEventHotKey failed with status \(status)")
+        guard status == noErr else {
+            NSLog("TextCleaner: RegisterEventHotKey(\(name)) failed with status \(status)")
+            return
         }
+
+        registrations[name] = Registration(id: id, handler: handler, hotKeyRef: ref)
+    }
+
+    func unregister(name: String) {
+        if let reg = registrations[name], let ref = reg.hotKeyRef {
+            UnregisterEventHotKey(ref)
+        }
+        registrations.removeValue(forKey: name)
+    }
+
+    fileprivate func dispatch(id: UInt32) {
+        guard let reg = registrations.values.first(where: { $0.id == id }) else { return }
+        let handler = reg.handler
+        DispatchQueue.main.async { handler() }
     }
 
     private func installEventHandler() {
@@ -52,10 +77,24 @@ final class HotKeyManager {
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, _, userData in
-                guard let userData = userData else { return noErr }
+            { _, event, userData in
+                guard let userData = userData, let event = event else { return noErr }
                 let manager = Unmanaged<HotKeyManager>.fromOpaque(userData).takeUnretainedValue()
-                DispatchQueue.main.async { manager.handler() }
+
+                var hotKeyID = EventHotKeyID()
+                let err = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+                guard err == noErr, hotKeyID.signature == HotKeyManager.signature else {
+                    return noErr
+                }
+                manager.dispatch(id: hotKeyID.id)
                 return noErr
             },
             1,
