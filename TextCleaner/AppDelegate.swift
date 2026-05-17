@@ -5,6 +5,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyManager: HotKeyManager?
     private var popupController: PopupWindowController?
+    private var pickerController: CharacterPickerController?
     private var settingsController: SettingsWindowController?
     private var statusItem: NSStatusItem?
 
@@ -18,16 +19,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rerouteAppMenuSettingsItem()
         promptForAccessibilityIfNeeded()
 
-        hotKeyManager = HotKeyManager { [weak self] in
-            self?.showPopup()
-        }
-        hotKeyManager?.register(with: HotKeySettings.current)
+        hotKeyManager = HotKeyManager()
+        registerHotKeys()
 
         let nc = NotificationCenter.default
         nc.addObserver(self, selector: #selector(hotKeyChanged),
                        name: .hotKeyChanged, object: nil)
+        nc.addObserver(self, selector: #selector(pickerHotKeyChanged),
+                       name: .pickerHotKeyChanged, object: nil)
         nc.addObserver(self, selector: #selector(dockIconPreferenceChanged),
                        name: .dockIconPreferenceChanged, object: nil)
+    }
+
+    private func registerHotKeys() {
+        hotKeyManager?.register(name: "popup", shortcut: HotKeySettings.current) { [weak self] in
+            self?.showPopup()
+        }
+        hotKeyManager?.register(name: "picker", shortcut: AppSettings.shared.pickerShortcut) { [weak self] in
+            self?.showPicker()
+        }
     }
 
     // MARK: - Dock interaction
@@ -49,7 +59,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Notifications
 
     @objc private func hotKeyChanged() {
-        hotKeyManager?.register(with: HotKeySettings.current)
+        hotKeyManager?.register(name: "popup", shortcut: HotKeySettings.current) { [weak self] in
+            self?.showPopup()
+        }
+    }
+
+    @objc private func pickerHotKeyChanged() {
+        hotKeyManager?.register(name: "picker", shortcut: AppSettings.shared.pickerShortcut) { [weak self] in
+            self?.showPicker()
+        }
     }
 
     @objc private func dockIconPreferenceChanged() {
@@ -145,5 +163,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popupController = PopupWindowController()
         }
         popupController?.show()
+    }
+
+    private func showPicker() {
+        if pickerController == nil {
+            pickerController = CharacterPickerController()
+        }
+        pickerController?.show()
     }
 }

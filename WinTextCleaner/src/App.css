@@ -1,0 +1,144 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  
+  --bg-color: rgba(30, 30, 32, 0.85);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --accent-color: #0A60FF;
+  --accent-text: #FFFFFF;
+  --item-hover-bg: rgba(255, 255, 255, 0.05);
+  --item-selected-bg: var(--accent-color);
+  
+  /* Mac Window Shadows */
+  --window-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 0 1px var(--border-color);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-color: rgba(245, 245, 247, 0.85);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --text-primary: rgba(0, 0, 0, 0.85);
+    --text-secondary: rgba(0, 0, 0, 0.5);
+    --item-hover-bg: rgba(0, 0, 0, 0.05);
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: transparent; /* Needs to be transparent for frameless window */
+  color: var(--text-primary);
+  overflow: hidden;
+  user-select: none;
+  /* Blur background behind window */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+  background-color: var(--bg-color);
+  box-shadow: var(--window-shadow);
+  border-radius: 12px;
+}
+
+/* Title bar with drag handle */
+.titlebar {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 4px 12px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  -webkit-app-region: drag; /* Makes it draggable in Tauri/Electron */
+  cursor: default;
+}
+
+.action-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  gap: 2px;
+  flex-grow: 1;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 6px;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.action-item.selected {
+  background-color: var(--item-selected-bg);
+  color: var(--accent-text);
+}
+
+.action-item:hover:not(.selected) {
+  background-color: var(--item-hover-bg);
+}
+
+.shortcut-key {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-rounded, 'SF Pro Rounded', system-ui;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.2);
+  color: var(--text-secondary);
+}
+
+.action-item.selected .shortcut-key {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: var(--accent-text);
+}
+
+.action-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+.action-item.selected .action-icon {
+  color: var(--accent-text);
+  opacity: 1;
+}
+
+.action-title {
+  font-size: 13px;
+}
+
+.footer-hints {
+  display: flex;
+  gap: 10px;
+  padding: 4px 12px 10px;
+}
+
+.hint-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.hint-key {
+  font-family: ui-rounded, 'SF Pro Rounded', system-ui;
+  font-weight: 600;
+  padding: 1px 5px;
+  background-color: rgba(128, 128, 128, 0.15);
+  border-radius: 3px;
+}

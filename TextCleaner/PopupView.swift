@@ -5,13 +5,15 @@ final class PopupViewModel: ObservableObject {
     @Published var showsPreview: Bool = false
     @Published var isEditing: Bool = false
     @Published var editedAttributed: NSAttributedString = NSAttributedString()
-
-    let actions: [TextAction]
-    var sourceAttributed: NSAttributedString = NSAttributedString()
-
-    init(actions: [TextAction]) {
-        self.actions = actions
+    @Published var actions: [TextAction] = [] {
+        didSet {
+            if selectedIndex >= actions.count {
+                selectedIndex = max(0, actions.count - 1)
+            }
+        }
     }
+
+    var sourceAttributed: NSAttributedString = NSAttributedString()
 
     func moveUp() {
         guard !actions.isEmpty else { return }

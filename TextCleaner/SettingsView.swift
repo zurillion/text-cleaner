@@ -26,15 +26,30 @@ struct SettingsView: View {
 
     private var generalSection: some View {
         section(title: "General") {
-            Toggle(isOn: $settings.showDockIcon) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Launch at login")
+                    Text("Start Text Cleaner automatically after you log in to macOS.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $settings.launchAtLogin)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+            HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Show icon in Dock")
                     Text("When off, Text Cleaner runs as a menu bar app only.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer()
+                Toggle("", isOn: $settings.showDockIcon)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
             }
-            .toggleStyle(.switch)
         }
     }
 
@@ -47,6 +62,15 @@ struct SettingsView: View {
                     .frame(width: 180, height: 24)
                 Button("Reset") {
                     shortcut = HotKeySettings.defaultShortcut
+                }
+            }
+            HStack {
+                Text("Unicode picker")
+                Spacer()
+                ShortcutRecorder(shortcut: $settings.pickerShortcut)
+                    .frame(width: 180, height: 24)
+                Button("Reset") {
+                    settings.pickerShortcut = AppSettings.defaultPickerShortcut
                 }
             }
             HStack {
@@ -88,25 +112,156 @@ struct SettingsView: View {
     private var actionsSection: some View {
         section(title: "Actions") {
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(TextAction.all.enumerated()), id: \.element.id) { index, action in
-                    HStack(spacing: 10) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .frame(width: 18, height: 18)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.primary.opacity(0.08))
-                            )
-                            .foregroundStyle(.secondary)
-                        Image(systemName: action.icon)
-                            .frame(width: 18)
-                            .foregroundStyle(.secondary)
-                        Text(action.title)
-                        Spacer()
+                actionsList
+                HStack(alignment: .top) {
+                    Text("Drag a row by its handle to reorder. The number is the keyboard shortcut while the popup is open; disabled actions get no number and sink below the enabled ones, where the only way to bring them back is the toggle.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button("Reset") {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            settings.actionPreferences = AppSettings.defaultActionPreferences
+                        }
                     }
                 }
+                .padding(.top, 4)
             }
         }
+    }
+
+    private var actionsList: some View {
+        VStack(spacing: 0) {
+            dropStrip(slot: 0)
+            ForEach(Array(settings.actionPreferences.enumerated()), id: \.element.kind) { index, pref in
+                actionRow(pref: pref)
+                    .padding(.vertical, 2)
+                dropStrip(slot: index + 1)
+            }
+        }
+    }
+
+    private var enabledCount: Int {
+        settings.actionPreferences.filter(\.enabled).count
+    }
+
+    @ViewBuilder
+    private func dropStrip(slot: Int) -> some View {
+        // Only slots within the enabled section (0…enabledCount) can
+        // accept a drop. Strips below the enabled/disabled boundary
+        // still render at the same height so the layout doesn't jump
+        // mid-drag, but they refuse the drop and stay blank.
+        DropStripView(isValid: slot <= enabledCount) { rawKind in
+            guard let kind = TextActionKind(rawValue: rawKind) else { return }
+            moveAction(kind: kind, toSlot: slot)
+        }
+    }
+
+    @ViewBuilder
+    private func actionRow(pref: ActionPreference) -> some View {
+        let action = TextAction.all.first { $0.kind == pref.kind }
+        HStack(spacing: 10) {
+            dragHandle(pref: pref, action: action)
+            Text(positionLabel(for: pref))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .frame(width: 18, height: 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.primary.opacity(pref.enabled ? 0.08 : 0.04))
+                )
+                .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
+            Image(systemName: action?.icon ?? "questionmark")
+                .frame(width: 18)
+                .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
+            Text(action?.title ?? pref.kind.rawValue)
+                .foregroundStyle(pref.enabled ? Color.primary : Color.secondary)
+            Spacer()
+            Toggle("", isOn: enabledBinding(for: pref.kind))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private func dragHandle(pref: ActionPreference, action: TextAction?) -> some View {
+        let icon = Image(systemName: "line.3.horizontal")
+            .font(.system(size: 11, weight: .semibold))
+            .frame(width: 16, height: 18)
+            .contentShape(Rectangle())
+        if pref.enabled {
+            icon
+                .foregroundStyle(.secondary)
+                .draggable(pref.kind.rawValue) {
+                    dragPreview(pref: pref, action: action)
+                }
+        } else {
+            // Greyed out and inert — disabled rows can only be brought
+            // back via the toggle, per the user's spec.
+            icon
+                .foregroundStyle(Color.secondary.opacity(0.25))
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func dragPreview(pref: ActionPreference, action: TextAction?) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: action?.icon ?? "questionmark")
+            Text(action?.title ?? pref.kind.rawValue)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        )
+    }
+
+    private func positionLabel(for pref: ActionPreference) -> String {
+        guard pref.enabled else { return "·" }
+        let enabledKinds = settings.actionPreferences.filter(\.enabled).map(\.kind)
+        if let idx = enabledKinds.firstIndex(of: pref.kind) {
+            return "\(idx + 1)"
+        }
+        return "·"
+    }
+
+    private func enabledBinding(for kind: TextActionKind) -> Binding<Bool> {
+        Binding(
+            get: {
+                settings.actionPreferences.first { $0.kind == kind }?.enabled ?? false
+            },
+            set: { newValue in
+                var prefs = settings.actionPreferences
+                guard let idx = prefs.firstIndex(where: { $0.kind == kind }) else { return }
+                prefs[idx].enabled = newValue
+                // normalize() puts a just-disabled row at the start of
+                // the disabled section and a just-enabled row at the
+                // end of the enabled section — exactly the placement
+                // requested by the spec.
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    settings.actionPreferences = normalize(prefs)
+                }
+            }
+        )
+    }
+
+    private func moveAction(kind: TextActionKind, toSlot slot: Int) {
+        var prefs = settings.actionPreferences
+        guard let sourceIdx = prefs.firstIndex(where: { $0.kind == kind }) else { return }
+        let item = prefs.remove(at: sourceIdx)
+        // The slot was computed against the original list; after
+        // removing the source, indices above it shift down by one.
+        let target = slot > sourceIdx ? slot - 1 : slot
+        prefs.insert(item, at: min(target, prefs.count))
+        withAnimation(.easeInOut(duration: 0.18)) {
+            settings.actionPreferences = normalize(prefs)
+        }
+    }
+
+    private func normalize(_ prefs: [ActionPreference]) -> [ActionPreference] {
+        prefs.filter(\.enabled) + prefs.filter { !$0.enabled }
     }
 
     private var permissionsSection: some View {
@@ -141,6 +296,40 @@ struct SettingsView: View {
                     )
             )
         }
+    }
+}
+
+// MARK: - Drag-and-drop strip
+
+/// Thin strip rendered between rows in the actions list. Reports as a
+/// drop target via `dropDestination`; when the dragged payload hovers
+/// over a strip that's inside the enabled section, a horizontal accent
+/// bar appears at that position to show where the row will land.
+/// Strips below the enabled/disabled boundary stay laid out (so the
+/// row spacing doesn't change mid-drag) but refuse the drop.
+private struct DropStripView: View {
+    let isValid: Bool
+    let onDrop: (String) -> Void
+    @State private var isTargeted: Bool = false
+
+    var body: some View {
+        Color.clear
+            .frame(height: 8)
+            .overlay {
+                if isTargeted && isValid {
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color.accentColor)
+                        .frame(height: 3)
+                        .padding(.horizontal, 6)
+                }
+            }
+            .dropDestination(for: String.self) { items, _ in
+                guard isValid, let raw = items.first else { return false }
+                onDrop(raw)
+                return true
+            } isTargeted: { targeted in
+                isTargeted = targeted
+            }
     }
 }
 

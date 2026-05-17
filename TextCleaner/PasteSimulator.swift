@@ -84,11 +84,25 @@ enum PasteSimulator {
         guard attr.length > 0 else { return false }
         let fullRange = NSRange(location: 0, length: attr.length)
         var formatted = false
+        let fm = NSFontManager.shared
+        let defaultFont = NSFont.systemFont(ofSize: 13)
 
         attr.enumerateAttributes(in: fullRange, options: []) { attrs, _, stop in
             if let font = attrs[.font] as? NSFont {
-                let traits = font.fontDescriptor.symbolicTraits
-                if traits.contains(.bold) || traits.contains(.italic) {
+                // NSFont.boldSystemFont gets its bold-ness from the
+                // system descriptor's weight rather than the symbolic
+                // .bold trait, so ⌘B in the editor produces a font
+                // whose symbolicTraits don't contain .bold even though
+                // NSFontManager reports it as bold. Ask NSFontManager
+                // too (it's the API we used to set the trait), and
+                // flag any family/size change so explicit Fonts-panel
+                // choices survive the paste.
+                let symbolic = font.fontDescriptor.symbolicTraits
+                let manager = fm.traits(of: font)
+                if symbolic.contains(.bold) || symbolic.contains(.italic)
+                    || manager.contains(.boldFontMask) || manager.contains(.italicFontMask)
+                    || abs(font.pointSize - defaultFont.pointSize) > 0.01
+                    || font.familyName != defaultFont.familyName {
                     formatted = true; stop.pointee = true; return
                 }
             }
