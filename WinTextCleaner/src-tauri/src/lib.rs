@@ -39,8 +39,12 @@ pub fn run() {
                 if let Some(window) = app.get_webview_window("main") {
                     if let Ok(hwnd) = window.hwnd() {
                         unsafe {
-                            let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
-                            SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE.0 as i32);
+                            // Extract raw pointer regardless of the windows_core version tauri uses
+                            let hwnd_ptr: *mut core::ffi::c_void = std::mem::transmute_copy(&hwnd);
+                            let win_hwnd = windows::Win32::Foundation::HWND(hwnd_ptr);
+                            
+                            let ex_style = GetWindowLongW(win_hwnd, GWL_EXSTYLE);
+                            SetWindowLongW(win_hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE.0 as i32);
                         }
                     }
                 }
