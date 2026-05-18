@@ -38,7 +38,6 @@ pub fn run() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     if let Ok(hwnd) = window.hwnd() {
-                        let hwnd = HWND(hwnd as *mut core::ffi::c_void);
                         unsafe {
                             let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
                             SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE.0 as i32);
