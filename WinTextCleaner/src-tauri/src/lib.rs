@@ -18,13 +18,13 @@ fn inject_paste(app: tauri::AppHandle) -> Result<(), String> {
     }
     
     std::thread::spawn(|| {
-        use enigo::{Enigo, Key, KeyboardControllable};
+        use enigo::{Enigo, Key, Keyboard, Settings, Direction};
         std::thread::sleep(std::time::Duration::from_millis(50));
-        let mut enigo = Enigo::new();
-        enigo.key_down(Key::Control);
-        // On macOS it would be Key::Meta, but we're doing Windows
-        enigo.key_click(Key::Layout('v')); 
-        enigo.key_up(Key::Control);
+        if let Ok(mut enigo) = Enigo::new(&Settings::default()) {
+            let _ = enigo.key(Key::Control, Direction::Press);
+            let _ = enigo.key(Key::Unicode('v'), Direction::Click);
+            let _ = enigo.key(Key::Control, Direction::Release);
+        }
     });
     
     Ok(())
@@ -38,7 +38,7 @@ pub fn run() {
             {
                 if let Some(window) = app.get_webview_window("main") {
                     if let Ok(hwnd) = window.hwnd() {
-                        let hwnd = HWND(hwnd.0 as isize);
+                        let hwnd = HWND(hwnd as *mut core::ffi::c_void);
                         unsafe {
                             let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
                             SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE.0 as i32);

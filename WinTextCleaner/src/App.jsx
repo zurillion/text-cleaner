@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Equal, Eraser, CaseUpper, CaseLower, Baseline, Code, Link } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { Window } from "@tauri-apps/api/window";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { register } from "@tauri-apps/plugin-global-shortcut";
 import "./App.css";
@@ -39,7 +38,9 @@ function cleanUrl(url) {
   }
 }
 
-const appWindow = new Window('main');
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+const appWindow = getCurrentWindow();
 
 function App() {
   const [selectedIndex, setSelectedIndex] = useState(0);
