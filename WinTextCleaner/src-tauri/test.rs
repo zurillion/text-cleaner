@@ -1,1 +1,1 @@
-fn main() { let hwnd = 0isize; let ptr = hwnd as *mut core::ffi::c_void; }
+fn main() { use clipboard_win::formats; let h = formats::Html; }
