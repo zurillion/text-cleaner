@@ -60,27 +60,40 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Registra lo shortcut globale
+    // Registra lo shortcut globale SOLO AL MOUNT
     let isRegistered = false;
     register("CommandOrControl+Shift+C", async () => {
-      const isVisible = await appWindow.isVisible();
-      if (isVisible) {
-        await appWindow.hide();
-      } else {
-        // reload clipboard when showing
-        try {
-          const html = await invoke("read_clipboard_html");
-          setClipboardHtml(html);
-        } catch (e) {
-          const text = await readText();
-          setClipboardHtml(text ? text.replace(/\n/g, "<br>") : "");
+      try {
+        const isVisible = await appWindow.isVisible();
+        if (isVisible) {
+          await appWindow.hide();
+        } else {
+          // reload clipboard when showing
+          try {
+            const html = await invoke("read_clipboard_html");
+            setClipboardHtml(html || "");
+          } catch (e) {
+            try {
+              const text = await readText();
+              setClipboardHtml(text ? text.replace(/\n/g, "<br>") : "");
+            } catch (err) {
+              setClipboardHtml(""); // Fallback in case clipboard is totally empty or unreadable
+            }
+          }
+          await appWindow.show();
+          await appWindow.setFocus();
         }
-        await appWindow.show();
+      } catch (err) {
+        console.error("Error in shortcut handler:", err);
       }
     }).then(() => {
       isRegistered = true;
     }).catch(console.error);
 
+    // Unregister is intentionally skipped here because there's no hot-reload for global shortcuts needed in production.
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = async (e) => {
       if (currentView === "main") {
         if (e.key === "ArrowDown") {
