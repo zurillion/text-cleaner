@@ -89,13 +89,13 @@ fn read_clipboard_html() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
         use clipboard_win::{register_format, get_clipboard, formats::RawData};
-        let html_format = register_format("HTML Format").map_err(|e| e.to_string())?;
+        let html_format = register_format("HTML Format").ok_or_else(|| "Format not found".to_string())?;
         
         let _clip = clipboard_win::Clipboard::new_attempts(10).map_err(|e| e.to_string())?;
         
-        let mut buffer = Vec::new();
-        match get_clipboard(RawData(html_format.get()), &mut buffer) {
-            Ok(_) => {
+        let buffer_res: Result<Vec<u8>, _> = get_clipboard(RawData(html_format.get()));
+        match buffer_res {
+            Ok(buffer) => {
                 let s = String::from_utf8_lossy(&buffer).into_owned();
                 let start_marker = "StartFragment:";
                 let end_marker = "EndFragment:";
