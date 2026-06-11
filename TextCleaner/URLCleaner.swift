@@ -58,12 +58,79 @@ enum URLCleaner {
               !host.isEmpty
         else { return nil }
 
+        // Facebook group "multi-permalinks" feed links bury the post id in
+        // a query parameter instead of the path. Rebuild the canonical
+        // direct link before generic stripping — this is purely
+        // reconstructive (the id is already in hand), no network needed.
+        if let rebuilt = reconstructFacebookGroupPost(components, host: host) {
+            return rebuilt
+        }
+
         if let items = components.queryItems, !items.isEmpty {
             let kept = items.filter { !shouldStrip(name: $0.name, host: host) }
             components.queryItems = kept.isEmpty ? nil : kept
         }
 
         return components.url?.absoluteString
+    }
+
+    // MARK: - Facebook group post reconstruction
+
+    /// Turns a Facebook group feed/notification link such as
+    ///   facebook.com/groups/GROUP/?multi_permalinks=POST&notif_id=…&ref=…
+    /// into the canonical direct link
+    ///   https://www.facebook.com/groups/GROUP/posts/POST/
+    ///
+    /// The post id comes from `multi_permalinks` when present, otherwise
+    /// from an existing `/permalink/ID` or `/posts/ID` path segment. All
+    /// tracking junk in the query string is discarded by virtue of
+    /// rebuilding the URL from scratch. Returns nil when the URL isn't a
+    /// Facebook group post, so the caller falls back to generic cleaning.
+    private static func reconstructFacebookGroupPost(
+        _ components: URLComponents,
+        host: String
+    ) -> String? {
+        guard host == "facebook.com" || host.hasSuffix(".facebook.com") else {
+            return nil
+        }
+
+        guard let groupID = pathComponent(after: "groups", in: components.path) else {
+            return nil
+        }
+
+        let postID = multiPermalinkPostID(in: components)
+            ?? pathComponent(after: "permalink", in: components.path)
+            ?? pathComponent(after: "posts", in: components.path)
+
+        guard let post = postID, !post.isEmpty else { return nil }
+
+        return "https://www.facebook.com/groups/\(groupID)/posts/\(post)/"
+    }
+
+    /// Reads the `multi_permalinks` (or singular `multi_permalink`) query
+    /// value. The parameter can carry several comma-separated ids when the
+    /// source notification bundled multiple posts; we take the first.
+    private static func multiPermalinkPostID(in components: URLComponents) -> String? {
+        guard let value = components.queryItems?.first(where: {
+            $0.name.lowercased().hasPrefix("multi_permalink")
+        })?.value, !value.isEmpty else {
+            return nil
+        }
+        let first = value.split(separator: ",").first.map(String.init) ?? value
+        return first.isEmpty ? nil : first
+    }
+
+    /// Returns the path segment immediately following `marker`, e.g. the
+    /// group id in `/groups/123456/` for marker "groups". Empty segments
+    /// (from leading/trailing/double slashes) are ignored.
+    private static func pathComponent(after marker: String, in path: String) -> String? {
+        let parts = path
+            .split(separator: "/", omittingEmptySubsequences: true)
+            .map(String.init)
+        guard let idx = parts.firstIndex(of: marker), idx + 1 < parts.count else {
+            return nil
+        }
+        return parts[idx + 1]
     }
 
     private static func shouldStrip(name: String, host: String) -> Bool {

@@ -24,6 +24,8 @@ Built with SwiftUI for macOS 14+ (Sonoma, Sequoia, Tahoe).
   `fbclid`, `gclid`, Facebook `__cft__*`/`__tn__*`, Amazon
   `pf_rd_*`/`pd_rd_*`, etc., with host-specific rules for YouTube,
   Twitter/X, Instagram, LinkedIn, TikTok, Spotify, Reddit, and Amazon).
+  Facebook group "multi-permalinks" feed links are rebuilt into the
+  canonical `/groups/<id>/posts/<id>/` direct link.
 - Optional Dock icon (default ON) rendered programmatically, with a
   right‑click menu mirroring the menu bar item.
 - 8 selectable popup themes.
