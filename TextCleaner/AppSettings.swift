@@ -189,7 +189,7 @@ final class AppSettings: ObservableObject {
                 }
             }
         } catch {
-            NSLog("Text Cleaner: failed to update launch-at-login: \(error)")
+            NSLog("TextMagic: failed to update launch-at-login: \(error)")
             // Roll back the published value without re-entering didSet.
             suppressLaunchAtLoginSync = true
             launchAtLogin = previous

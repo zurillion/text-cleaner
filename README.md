@@ -1,4 +1,4 @@
-# Text Cleaner
+# TextMagic
 
 A lightweight macOS menu bar utility that transforms the clipboard and pastes
 the result into the active app. Triggered by a global hotkey (default
@@ -83,7 +83,7 @@ The first time you trigger an action, macOS prompts to grant
 keystroke to other apps.
 
 System Settings → Privacy & Security → Accessibility → enable
-*Text Cleaner*.
+*TextMagic*.
 
 If the hotkey doesn't fire, check System Settings → Keyboard →
 Keyboard Shortcuts for a conflict with the default `⌃⌥⌘V`, or change

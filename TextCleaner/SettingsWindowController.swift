@@ -10,7 +10,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             rootView: SettingsView().environmentObject(AppSettings.shared)
         )
         let window = NSWindow(contentViewController: hosting)
-        window.title = "Text Cleaner Settings"
+        window.title = "TextMagic Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
         window.setContentSize(NSSize(width: 500, height: 560))
