@@ -110,7 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(
             systemSymbolName: "wand.and.sparkles",
-            accessibilityDescription: "TextMagic"
+            accessibilityDescription: "TextMagician"
         )
         item.menu = buildActionMenu(includeQuit: true)
         statusItem = item
@@ -137,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if includeQuit {
             menu.addItem(.separator())
             menu.addItem(
-                withTitle: "Quit TextMagic",
+                withTitle: "Quit TextMagician",
                 action: #selector(NSApplication.terminate(_:)),
                 keyEquivalent: "q"
             )

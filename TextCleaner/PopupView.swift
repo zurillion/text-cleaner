@@ -79,7 +79,7 @@ struct PopupView: View {
     @ViewBuilder
     private func titleBar(theme: PopupTheme) -> some View {
         HStack {
-            Text("TextMagic")
+            Text("TextMagician")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(theme.secondaryForeground)
                 .allowsHitTesting(false)

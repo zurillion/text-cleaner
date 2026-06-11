@@ -49,7 +49,7 @@ final class HotKeyManager {
             &ref
         )
         guard status == noErr else {
-            NSLog("TextMagic: RegisterEventHotKey(\(name)) failed with status \(status)")
+            NSLog("TextMagician: RegisterEventHotKey(\(name)) failed with status \(status)")
             return
         }
 

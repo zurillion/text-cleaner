@@ -29,7 +29,7 @@ struct SettingsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Launch at login")
-                    Text("Start TextMagic automatically after you log in to macOS.")
+                    Text("Start TextMagician automatically after you log in to macOS.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -41,7 +41,7 @@ struct SettingsView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Show icon in Dock")
-                    Text("When off, TextMagic runs as a menu bar app only.")
+                    Text("When off, TextMagician runs as a menu bar app only.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -266,7 +266,7 @@ struct SettingsView: View {
 
     private var permissionsSection: some View {
         section(title: "Permissions") {
-            Text("TextMagic needs the Accessibility permission to paste into the active app. The first time you trigger an action, macOS will ask you to grant access in System Settings → Privacy & Security → Accessibility.")
+            Text("TextMagician needs the Accessibility permission to paste into the active app. The first time you trigger an action, macOS will ask you to grant access in System Settings → Privacy & Security → Accessibility.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
