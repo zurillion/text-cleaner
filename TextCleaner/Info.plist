@@ -13,7 +13,7 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
+    <string>TextMagician</string>
     <key>CFBundleDisplayName</key>
     <string>TextMagician</string>
     <key>CFBundlePackageType</key>
