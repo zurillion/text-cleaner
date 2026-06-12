@@ -7,6 +7,7 @@ import ServiceManagement
 extension Notification.Name {
     static let dockIconPreferenceChanged = Notification.Name("TextCleaner.dockIconChanged")
     static let pickerHotKeyChanged = Notification.Name("TextCleaner.pickerHotKeyChanged")
+    static let emojiPickerHotKeyChanged = Notification.Name("TextCleaner.emojiPickerHotKeyChanged")
 }
 
 /// User-overridable configuration for one of the built-in actions:
@@ -30,7 +31,9 @@ final class AppSettings: ObservableObject {
         static let centerShortcut            = "TextCleaner.centerShortcut"
         static let actionPreferences         = "TextCleaner.actionPreferences"
         static let pickerShortcut            = "TextCleaner.pickerShortcut"
+        static let emojiPickerShortcut       = "TextCleaner.emojiPickerShortcut"
         static let recentPickedCharacters    = "TextCleaner.recentPickedCharacters"
+        static let recentPickedEmojis        = "TextCleaner.recentPickedEmojis"
     }
 
     /// How many entries the picker's Recent section keeps. Pushing a
@@ -68,25 +71,52 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// Characters the user most recently picked, newest first, capped
-    /// at `recentCharactersLimit`. Persisted as a plain `[String]` in
-    /// UserDefaults.
+    /// Global hotkey that opens the Emoji picker window.
+    @Published var emojiPickerShortcut: KeyboardShortcut {
+        didSet {
+            if let data = try? JSONEncoder().encode(emojiPickerShortcut) {
+                UserDefaults.standard.set(data, forKey: Key.emojiPickerShortcut)
+            }
+            NotificationCenter.default.post(name: .emojiPickerHotKeyChanged, object: nil)
+        }
+    }
+
+    /// Characters the user most recently picked from the Unicode
+    /// picker, newest first, capped at `recentCharactersLimit`.
+    /// Persisted as a plain `[String]` in UserDefaults.
     @Published var recentPickedCharacters: [String] {
         didSet {
             UserDefaults.standard.set(recentPickedCharacters, forKey: Key.recentPickedCharacters)
         }
     }
 
+    /// Emojis the user most recently picked, newest first, capped at
+    /// `recentCharactersLimit`. Kept separate from the Unicode list so
+    /// the two pickers don't pollute each other's Recent section.
+    @Published var recentPickedEmojis: [String] {
+        didSet {
+            UserDefaults.standard.set(recentPickedEmojis, forKey: Key.recentPickedEmojis)
+        }
+    }
+
     /// LRU-style record: pull the pick to the front and drop the
     /// oldest if we're past the limit.
     func recordPickedCharacter(_ character: String) {
-        var list = recentPickedCharacters
-        list.removeAll { $0 == character }
-        list.insert(character, at: 0)
-        if list.count > Self.recentCharactersLimit {
-            list = Array(list.prefix(Self.recentCharactersLimit))
+        recentPickedCharacters = Self.promoting(character, in: recentPickedCharacters)
+    }
+
+    func recordPickedEmoji(_ emoji: String) {
+        recentPickedEmojis = Self.promoting(emoji, in: recentPickedEmojis)
+    }
+
+    private static func promoting(_ pick: String, in list: [String]) -> [String] {
+        var next = list
+        next.removeAll { $0 == pick }
+        next.insert(pick, at: 0)
+        if next.count > recentCharactersLimit {
+            next = Array(next.prefix(recentCharactersLimit))
         }
-        recentPickedCharacters = list
+        return next
     }
 
     @Published var actionPreferences: [ActionPreference] {
@@ -123,6 +153,13 @@ final class AppSettings: ObservableObject {
         )
     }
 
+    static var defaultEmojiPickerShortcut: KeyboardShortcut {
+        KeyboardShortcut(
+            keyCode: UInt32(kVK_ANSI_E),
+            modifierFlags: [.control, .option, .command]
+        )
+    }
+
     static var defaultActionPreferences: [ActionPreference] {
         TextActionKind.allCases.map { ActionPreference(kind: $0, enabled: true) }
     }
@@ -151,8 +188,17 @@ final class AppSettings: ObservableObject {
             self.pickerShortcut = Self.defaultPickerShortcut
         }
 
+        if let data = defaults.data(forKey: Key.emojiPickerShortcut),
+           let decoded = try? JSONDecoder().decode(KeyboardShortcut.self, from: data) {
+            self.emojiPickerShortcut = decoded
+        } else {
+            self.emojiPickerShortcut = Self.defaultEmojiPickerShortcut
+        }
+
         self.recentPickedCharacters =
             defaults.stringArray(forKey: Key.recentPickedCharacters) ?? []
+        self.recentPickedEmojis =
+            defaults.stringArray(forKey: Key.recentPickedEmojis) ?? []
 
         if let data = defaults.data(forKey: Key.actionPreferences) {
             self.actionPreferences = Self.decodePreferences(from: data)

@@ -27,12 +27,15 @@ enum CharacterCatalog {
     /// Looks up the first catalog entry whose character matches. Used to
     /// hydrate the Recent section: we only persist the character itself
     /// in UserDefaults, then on each picker open we re-attach the
-    /// catalog's description so the header still labels it nicely.
-    /// If the character isn't in the catalog (e.g. an old recent for a
-    /// glyph that was removed), returns a plain entry without a
-    /// description rather than dropping it entirely.
-    static func entry(for character: String) -> CharacterEntry {
-        for section in sections {
+    /// matching catalog's description so the header still labels it
+    /// nicely. The catalog parameter lets the same logic serve the
+    /// Unicode picker (against `CharacterCatalog.sections`) and the
+    /// emoji picker (against `EmojiCatalog.sections`). If the character
+    /// isn't in the catalog (e.g. an old recent for a glyph that was
+    /// removed), returns a plain entry without a description rather
+    /// than dropping it entirely.
+    static func entry(for character: String, in catalog: [CharacterSection]) -> CharacterEntry {
+        for section in catalog {
             if let match = section.entries.first(where: { $0.character == character }) {
                 return CharacterEntry(match.character, match.description)
             }

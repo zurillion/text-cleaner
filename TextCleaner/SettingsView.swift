@@ -74,6 +74,15 @@ struct SettingsView: View {
                 }
             }
             HStack {
+                Text("Emoji picker")
+                Spacer()
+                ShortcutRecorder(shortcut: $settings.emojiPickerShortcut)
+                    .frame(width: 180, height: 24)
+                Button("Reset") {
+                    settings.emojiPickerShortcut = AppSettings.defaultEmojiPickerShortcut
+                }
+            }
+            HStack {
                 Text("Re-center popup")
                 Spacer()
                 ShortcutRecorder(shortcut: $settings.centerShortcut)

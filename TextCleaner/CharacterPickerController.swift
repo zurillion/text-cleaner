@@ -2,11 +2,16 @@ import AppKit
 import Carbon.HIToolbox
 import SwiftUI
 
-/// Owns the floating panel for the Unicode picker. Mirrors the pattern
-/// established by `PopupWindowController`: a borderless non-activating
-/// NSPanel hosting a SwiftUI view, with global resign-key auto-close
-/// and a paste handoff that reactivates the previous frontmost app.
+/// Owns the floating panel for a glyph picker (Unicode characters or
+/// emojis — same UI, different catalog). Mirrors the pattern established
+/// by `PopupWindowController`: a borderless non-activating NSPanel
+/// hosting a SwiftUI view, with global resign-key auto-close and a paste
+/// handoff that reactivates the previous frontmost app.
 final class CharacterPickerController {
+    private let catalog: [CharacterSection]
+    private let loadRecents: () -> [String]
+    private let recordPick: (String) -> Void
+
     private var panel: PickerPanel?
     private var model: CharacterPickerModel?
     private var resignObserver: NSObjectProtocol?
@@ -16,6 +21,26 @@ final class CharacterPickerController {
     private var ignoreResign = false
 
     private let defaultSize = NSSize(width: 460, height: 460)
+
+    /// - Parameters:
+    ///   - catalog: the static sections rendered when the search field
+    ///     is empty (and the universe the search filter runs over).
+    ///   - loadRecents: closure that fetches the picker's persisted
+    ///     recent picks. Called on each `show()` so changes from other
+    ///     opens (or app launches) show up.
+    ///   - recordPick: closure that pushes the just-committed glyph into
+    ///     the recent list. Different pickers use different storage so
+    ///     emoji picks don't end up in the Unicode picker's Recent and
+    ///     vice versa.
+    init(
+        catalog: [CharacterSection],
+        loadRecents: @escaping () -> [String],
+        recordPick: @escaping (String) -> Void
+    ) {
+        self.catalog = catalog
+        self.loadRecents = loadRecents
+        self.recordPick = recordPick
+    }
 
     deinit {
         for observer in [resignObserver, resizeObserver].compactMap({ $0 }) {
@@ -35,8 +60,8 @@ final class CharacterPickerController {
         // Refresh recents from persisted settings each time the picker
         // opens — captures any picks made via earlier opens of this
         // app session and survives restarts.
-        model.recents = AppSettings.shared.recentPickedCharacters.map {
-            CharacterCatalog.entry(for: $0)
+        model.recents = loadRecents().map {
+            CharacterCatalog.entry(for: $0, in: catalog)
         }
 
         applyThemeAppearance()
@@ -70,7 +95,7 @@ final class CharacterPickerController {
     // MARK: - Build
 
     private func build() {
-        let model = CharacterPickerModel()
+        let model = CharacterPickerModel(sections: catalog)
         self.model = model
 
         let view = CharacterPickerView(
@@ -219,7 +244,7 @@ final class CharacterPickerController {
     }
 
     private func commit(character: String) {
-        AppSettings.shared.recordPickedCharacter(character)
+        recordPick(character)
         // close() orders the panel out and reactivates previousFrontmost
         // synchronously; the small delay before paste lets that handoff
         // settle so the synthetic ⌘V lands in the target rather than

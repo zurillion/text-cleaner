@@ -5,7 +5,8 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyManager: HotKeyManager?
     private var popupController: PopupWindowController?
-    private var pickerController: CharacterPickerController?
+    private var characterPickerController: CharacterPickerController?
+    private var emojiPickerController: CharacterPickerController?
     private var settingsController: SettingsWindowController?
     private var statusItem: NSStatusItem?
 
@@ -27,6 +28,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                        name: .hotKeyChanged, object: nil)
         nc.addObserver(self, selector: #selector(pickerHotKeyChanged),
                        name: .pickerHotKeyChanged, object: nil)
+        nc.addObserver(self, selector: #selector(emojiPickerHotKeyChanged),
+                       name: .emojiPickerHotKeyChanged, object: nil)
         nc.addObserver(self, selector: #selector(dockIconPreferenceChanged),
                        name: .dockIconPreferenceChanged, object: nil)
     }
@@ -36,7 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.showPopup()
         }
         hotKeyManager?.register(name: "picker", shortcut: AppSettings.shared.pickerShortcut) { [weak self] in
-            self?.showPicker()
+            self?.showCharacterPicker()
+        }
+        hotKeyManager?.register(name: "emojiPicker", shortcut: AppSettings.shared.emojiPickerShortcut) { [weak self] in
+            self?.showEmojiPicker()
         }
     }
 
@@ -66,7 +72,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func pickerHotKeyChanged() {
         hotKeyManager?.register(name: "picker", shortcut: AppSettings.shared.pickerShortcut) { [weak self] in
-            self?.showPicker()
+            self?.showCharacterPicker()
+        }
+    }
+
+    @objc private func emojiPickerHotKeyChanged() {
+        hotKeyManager?.register(name: "emojiPicker", shortcut: AppSettings.shared.emojiPickerShortcut) { [weak self] in
+            self?.showEmojiPicker()
         }
     }
 
@@ -165,10 +177,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popupController?.show()
     }
 
-    private func showPicker() {
-        if pickerController == nil {
-            pickerController = CharacterPickerController()
+    private func showCharacterPicker() {
+        if characterPickerController == nil {
+            characterPickerController = CharacterPickerController(
+                catalog: CharacterCatalog.sections,
+                loadRecents: { AppSettings.shared.recentPickedCharacters },
+                recordPick: { AppSettings.shared.recordPickedCharacter($0) }
+            )
         }
-        pickerController?.show()
+        characterPickerController?.show()
+    }
+
+    private func showEmojiPicker() {
+        if emojiPickerController == nil {
+            emojiPickerController = CharacterPickerController(
+                catalog: EmojiCatalog.sections,
+                loadRecents: { AppSettings.shared.recentPickedEmojis },
+                recordPick: { AppSettings.shared.recordPickedEmoji($0) }
+            )
+        }
+        emojiPickerController?.show()
     }
 }
