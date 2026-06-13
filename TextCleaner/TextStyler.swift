@@ -86,6 +86,54 @@ enum TextStyler {
         applyTable(s, smallCherokeeTable)
     }
 
+    // MARK: - Reverse / line-break tricks
+    //
+    // The last three are best-effort implementations of yaytext.com's
+    // line-breaks tools — the page is protected by Cloudflare and the
+    // tool isn't open source, so the exact glyphs they use can't be
+    // mirrored verbatim. The choices below follow the common Facebook /
+    // Instagram practice:
+    //
+    // * Force Line Break — every empty line gets U+2800 (Braille
+    //   Pattern Blank). Braille blank renders as nothing visible but
+    //   counts as a non-whitespace character, so Facebook stops
+    //   collapsing consecutive newlines.
+    //
+    // * Tabbed Paragraph / Double Tabbed — each line gets prepended
+    //   with one (or two) U+3000 (Ideographic Space). Ideographic space
+    //   is full-width, visible, and isn't stripped from the beginning
+    //   of lines like regular ASCII whitespace would be.
+    //
+    // If a Facebook test shows yaytext produces a different visible
+    // result, swap the codepoints — the structure of the transforms is
+    // independent of which invisible character is chosen.
+
+    static func reverse(_ s: String) -> String {
+        // String.reversed() iterates Character, so extended grapheme
+        // clusters (emoji with combining marks, etc.) stay intact.
+        String(s.reversed())
+    }
+
+    static func forceLineBreak(_ s: String) -> String {
+        s.components(separatedBy: "\n")
+            .map { $0.isEmpty ? "\u{2800}" : $0 }
+            .joined(separator: "\n")
+    }
+
+    static func tabbedParagraph(_ s: String) -> String {
+        prefixLines(s, with: "\u{3000}")
+    }
+
+    static func doubleTabbed(_ s: String) -> String {
+        prefixLines(s, with: "\u{3000}\u{3000}")
+    }
+
+    private static func prefixLines(_ s: String, with prefix: String) -> String {
+        s.components(separatedBy: "\n")
+            .map { prefix + $0 }
+            .joined(separator: "\n")
+    }
+
     // MARK: - One-off styles
 
     static func upsideDown(_ s: String) -> String {

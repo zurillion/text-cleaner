@@ -32,11 +32,15 @@ enum TextActionKind: String, CaseIterable, Codable {
     case lowerSquigglesHooks
     case alternatingSquigglesHooks
     case upsideDown
+    case reverse
     case largeCherokee
     case smallCherokee
     case fullwidth
     case vaporwave
     case smallCaps
+    case forceLineBreak
+    case tabbedParagraph
+    case doubleTabbed
 
     /// Whether this action defaults to ON the first time it shows up in
     /// the user's preferences. Currently everything defaults to on —
@@ -81,11 +85,15 @@ struct TextAction: Identifiable, Hashable {
         TextAction(kind: .lowerSquigglesHooks,   title: "Lower squiggles and hooks",  icon: "scribble"),
         TextAction(kind: .alternatingSquigglesHooks, title: "Alternating squiggles and hooks", icon: "scribble"),
         TextAction(kind: .upsideDown,            title: "Upside down",             icon: "arrow.uturn.down"),
+        TextAction(kind: .reverse,               title: "Reverse",                 icon: "arrow.left.arrow.right"),
         TextAction(kind: .largeCherokee,         title: "Large Cherokee letterlike", icon: "character"),
         TextAction(kind: .smallCherokee,         title: "Small Cherokee letterlike", icon: "character"),
         TextAction(kind: .fullwidth,             title: "Fullwidth",               icon: "arrow.left.and.right"),
         TextAction(kind: .vaporwave,             title: "Vaporwave",               icon: "sparkles"),
         TextAction(kind: .smallCaps,             title: "Small caps",              icon: "textformat.size"),
+        TextAction(kind: .forceLineBreak,        title: "Force line break",        icon: "return"),
+        TextAction(kind: .tabbedParagraph,       title: "Tabbed paragraph",        icon: "increase.indent"),
+        TextAction(kind: .doubleTabbed,          title: "Double tabbed",           icon: "increase.indent"),
     ]
 
     func transform(_ input: NSAttributedString) -> NSAttributedString {
@@ -127,11 +135,15 @@ struct TextAction: Identifiable, Hashable {
         case .lowerSquigglesHooks:        return styled(input, TextStyler.lowerSquigglesHooks)
         case .alternatingSquigglesHooks:  return styled(input, TextStyler.alternatingSquigglesHooks)
         case .upsideDown:            return styled(input, TextStyler.upsideDown)
+        case .reverse:               return styled(input, TextStyler.reverse)
         case .largeCherokee:         return styled(input, TextStyler.largeCherokeeLetterlike)
         case .smallCherokee:         return styled(input, TextStyler.smallCherokeeLetterlike)
         case .fullwidth:             return styled(input, TextStyler.fullwidth)
         case .vaporwave:             return styled(input, TextStyler.vaporwave)
         case .smallCaps:             return styled(input, TextStyler.smallCaps)
+        case .forceLineBreak:        return styled(input, TextStyler.forceLineBreak)
+        case .tabbedParagraph:       return styled(input, TextStyler.tabbedParagraph)
+        case .doubleTabbed:          return styled(input, TextStyler.doubleTabbed)
         }
     }
 
