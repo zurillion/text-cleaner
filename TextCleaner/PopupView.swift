@@ -48,9 +48,26 @@ struct PopupView: View {
         VStack(alignment: .leading, spacing: 8) {
             titleBar(theme: theme)
 
-            VStack(spacing: 2) {
-                ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
-                    row(index: index, action: action, theme: theme)
+            // ~10 rows fit before scrolling kicks in. Once the user
+            // enables more actions than that, the list scrolls instead
+            // of pushing the popup off-screen, and the selection auto-
+            // scrolls into view as the user moves with arrow keys.
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 2) {
+                        ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
+                            row(index: index, action: action, theme: theme)
+                                .id(action.id)
+                        }
+                    }
+                }
+                .frame(maxHeight: 360)
+                .scrollIndicators(.automatic)
+                .onChange(of: model.selectedIndex) { _, newValue in
+                    guard model.actions.indices.contains(newValue) else { return }
+                    withAnimation(.easeOut(duration: 0.1)) {
+                        proxy.scrollTo(model.actions[newValue].id, anchor: .center)
+                    }
                 }
             }
 

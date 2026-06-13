@@ -28,26 +28,21 @@ enum TextActionKind: String, CaseIterable, Codable {
     case shortStrikethrough
     case longStrikethrough
     case underlineDoubleMacron
+    case upperSquigglesHooks
+    case lowerSquigglesHooks
+    case alternatingSquigglesHooks
     case upsideDown
+    case largeCherokee
+    case smallCherokee
     case fullwidth
     case vaporwave
     case smallCaps
 
-    /// Unicode-styling actions vs the original text-processing ones.
-    var isStyle: Bool {
-        switch self {
-        case .unvaried, .removeFormatting, .uppercase, .lowercase,
-             .camelCase, .snakeCase, .cleanURL:
-            return false
-        default:
-            return true
-        }
-    }
-
-    /// Whether the action is on the first time it appears in the user's
-    /// preferences. Core actions start enabled; the many Unicode styles
-    /// start disabled so they don't bloat the popup until opted into.
-    var defaultEnabled: Bool { !isStyle }
+    /// Whether this action defaults to ON the first time it shows up in
+    /// the user's preferences. Currently everything defaults to on —
+    /// the popup is scrollable, and the user prunes from Settings what
+    /// they don't use.
+    var defaultEnabled: Bool { true }
 }
 
 struct TextAction: Identifiable, Hashable {
@@ -82,7 +77,12 @@ struct TextAction: Identifiable, Hashable {
         TextAction(kind: .shortStrikethrough,    title: "Short strikethrough",     icon: "strikethrough"),
         TextAction(kind: .longStrikethrough,     title: "Long strikethrough",      icon: "strikethrough"),
         TextAction(kind: .underlineDoubleMacron, title: "Underline (double macron)", icon: "underline"),
+        TextAction(kind: .upperSquigglesHooks,   title: "Upper squiggles and hooks",  icon: "scribble"),
+        TextAction(kind: .lowerSquigglesHooks,   title: "Lower squiggles and hooks",  icon: "scribble"),
+        TextAction(kind: .alternatingSquigglesHooks, title: "Alternating squiggles and hooks", icon: "scribble"),
         TextAction(kind: .upsideDown,            title: "Upside down",             icon: "arrow.uturn.down"),
+        TextAction(kind: .largeCherokee,         title: "Large Cherokee letterlike", icon: "character"),
+        TextAction(kind: .smallCherokee,         title: "Small Cherokee letterlike", icon: "character"),
         TextAction(kind: .fullwidth,             title: "Fullwidth",               icon: "arrow.left.and.right"),
         TextAction(kind: .vaporwave,             title: "Vaporwave",               icon: "sparkles"),
         TextAction(kind: .smallCaps,             title: "Small caps",              icon: "textformat.size"),
@@ -123,7 +123,12 @@ struct TextAction: Identifiable, Hashable {
         case .shortStrikethrough:    return styled(input, TextStyler.shortStrikethrough)
         case .longStrikethrough:     return styled(input, TextStyler.longStrikethrough)
         case .underlineDoubleMacron: return styled(input, TextStyler.underlineDoubleMacron)
+        case .upperSquigglesHooks:        return styled(input, TextStyler.upperSquigglesHooks)
+        case .lowerSquigglesHooks:        return styled(input, TextStyler.lowerSquigglesHooks)
+        case .alternatingSquigglesHooks:  return styled(input, TextStyler.alternatingSquigglesHooks)
         case .upsideDown:            return styled(input, TextStyler.upsideDown)
+        case .largeCherokee:         return styled(input, TextStyler.largeCherokeeLetterlike)
+        case .smallCherokee:         return styled(input, TextStyler.smallCherokeeLetterlike)
         case .fullwidth:             return styled(input, TextStyler.fullwidth)
         case .vaporwave:             return styled(input, TextStyler.vaporwave)
         case .smallCaps:             return styled(input, TextStyler.smallCaps)

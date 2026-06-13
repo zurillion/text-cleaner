@@ -61,6 +61,31 @@ enum TextStyler {
     static func longStrikethrough(_ s: String) -> String { overlay(s, 0x0336) }
     static func underlineDoubleMacron(_ s: String) -> String { overlay(s, 0x035F) }
 
+    // MARK: - Table-driven styles
+    //
+    // The tables below were captured directly from yaytext.com so the
+    // output is byte-for-byte the same. Each one lists 26 graphemes for
+    // upper, 26 for lower, and 10 for digits, applied via `applyTable`.
+    // Graphemes (Character) rather than scalars are used as keys so
+    // combining marks (X̂ = X + U+0302, L̡ = L + U+0321, etc.) survive
+    // intact through both the table and the substitution.
+
+    static func upperSquigglesHooks(_ s: String) -> String {
+        applyTable(s, upperSquigglesHooksTable)
+    }
+    static func lowerSquigglesHooks(_ s: String) -> String {
+        applyTable(s, lowerSquigglesHooksTable)
+    }
+    static func alternatingSquigglesHooks(_ s: String) -> String {
+        applyTable(s, alternatingSquigglesHooksTable)
+    }
+    static func largeCherokeeLetterlike(_ s: String) -> String {
+        applyTable(s, largeCherokeeTable)
+    }
+    static func smallCherokeeLetterlike(_ s: String) -> String {
+        applyTable(s, smallCherokeeTable)
+    }
+
     // MARK: - One-off styles
 
     static func upsideDown(_ s: String) -> String {
@@ -94,6 +119,45 @@ enum TextStyler {
     }
 
     // MARK: - Engine
+
+    /// Builds a `[Character: String]` substitution table from three
+    /// grapheme-aligned strings. Each input string is split into
+    /// extended grapheme clusters so multi-scalar entries (X̂, L̡, …)
+    /// count as one position and the matching key (`A`, `L`, …)
+    /// receives the whole cluster as its replacement.
+    private static func makeTable(
+        upper: String,
+        lower: String,
+        digits: String
+    ) -> [Character: String] {
+        var table: [Character: String] = [:]
+        let upperKeys = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        let lowerKeys = Array("abcdefghijklmnopqrstuvwxyz")
+        let digitKeys = Array("0123456789")
+        let upperVals = Array(upper)
+        let lowerVals = Array(lower)
+        let digitVals = Array(digits)
+        for (key, val) in zip(upperKeys, upperVals) { table[key] = String(val) }
+        for (key, val) in zip(lowerKeys, lowerVals) { table[key] = String(val) }
+        for (key, val) in zip(digitKeys, digitVals) { table[key] = String(val) }
+        return table
+    }
+
+    private static func applyTable(
+        _ text: String,
+        _ table: [Character: String]
+    ) -> String {
+        var out = String()
+        out.reserveCapacity(text.count * 2)
+        for ch in text {
+            if let mapped = table[ch] {
+                out += mapped
+            } else {
+                out.append(ch)
+            }
+        }
+        return out
+    }
 
     private static func mathAlphabet(
         _ text: String,
@@ -174,6 +238,42 @@ enum TextStyler {
     private static let doubleStruckHoles: [Character: String] = [
         "C": "ℂ", "H": "ℍ", "N": "ℕ", "P": "ℙ", "Q": "ℚ", "R": "ℝ", "Z": "ℤ",
     ]
+
+    // MARK: - Squiggles / Cherokee tables (from yaytext.com)
+    //
+    // Stored as one Character→String entry per ASCII letter/digit, so
+    // the keys read literally and the multi-scalar replacements (X̂, L̡,
+    // …) preserve their combining marks.
+
+    private static let upperSquigglesHooksTable: [Character: String] = makeTable(
+        upper: "ẢƁĆĎẾḞƓꞪỈĴƘĹḾŃƠꝔ℺ȐŚƬƯѴⱲX̂ƳŽ",
+        lower: "ảɓƈɗẻḟɠɦỉĵƙꞎḿήơƥʠɼśťưⱱⱳx̂ƴź",
+        digits: "0123456789"
+    )
+
+    private static let lowerSquigglesHooksTable: [Character: String] = makeTable(
+        upper: "ĄƁÇƊĘƑĢꞪ̡I̢ꞲĶL̡ⱮƝǪƤꝖⱤⱾƮŲṾⱲҲƳȤ",
+        lower: "ᶏᶀꞔᶁᶒᶂᶃⱨᶖʝᶄᶅᶆᶇǫᶈɋᶉᶊƫᶙᶌЩᶍƴᶎ",
+        digits: "0123456789"
+    )
+
+    private static let alternatingSquigglesHooksTable: [Character: String] = makeTable(
+        upper: "ĄƁÇĎĘḞĢꞪI̢ĴĶĹⱮŃǪꝔꝖȐⱾƬŲѴⱲX̂ƳŽ",
+        lower: "ảᶀƈᶁẻᶂɠⱨỉʝƙᶅḿᶇơᶈʠᶉśƫưᶌⱳᶍƴᶎ",
+        digits: "0123456789"
+    )
+
+    private static let largeCherokeeTable: [Character: String] = makeTable(
+        upper: "ᎪᏴᏟᎠᎬᎱᏀᎻᏆᎫᏦᏞᎷᏁᎾᏢᎤᎡᏚᎢᏬᏙᎳᎲᎩᏃ",
+        lower: "ᎪᏴᏟᎠᎬᎱᏀᎻᏆᎫᏦᏞᎷᏁᎾᏢᎤᎡᏚᎢᏬᏙᎳᎲᎩᏃ",
+        digits: "0123456789"
+    )
+
+    private static let smallCherokeeTable: [Character: String] = makeTable(
+        upper: "ꭺᏼꮯꭰꭼꮁᏽꮋꮖꭻꮶꮮꮇꮑꮎꮲꭴꭱꮪꭲꮼꮩꮤꮂꭹꮓ",
+        lower: "ꭺᏼꮯꭰꭼꮁᏽꮋꮖꭻꮶꮮꮇꮑꮎꮲꭴꭱꮪꭲꮼꮩꮤꮂꭹꮓ",
+        digits: "0123456789"
+    )
 
     // MARK: - Lookup tables
 
