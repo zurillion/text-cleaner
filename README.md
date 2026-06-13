@@ -13,7 +13,7 @@ Built with SwiftUI for macOS 14+ (Sonoma, Sequoia, Tahoe).
 - Global hotkey (default `⌃⌥⌘V`), configurable in Settings.
 - Floating popup with three navigation modes:
   - `↑` / `↓` to move the highlight, `Return` to confirm.
-  - `1`–`9` to pick an item directly.
+  - `1`–`9` then `a`–`z` to pick an item directly by its badge.
   - Mouse hover + click.
 - `Esc` or click outside the popup cancels.
 - Reads plain text or RTF/RTFD/HTML from the clipboard, applies the

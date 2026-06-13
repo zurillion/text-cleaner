@@ -1,5 +1,40 @@
 import SwiftUI
 
+/// Maps a row position to its keyboard shortcut and back. Positions
+/// 0–8 use the digits 1–9, positions 9–34 use the letters a–z, and
+/// anything past that gets no shortcut (the action is still usable by
+/// arrow + Return or mouse).
+enum ActionShortcutKey {
+    private static let letterCount = 26  // a–z
+
+    /// The label shown in the row badge, or nil when the position has
+    /// no shortcut.
+    static func label(for index: Int) -> String? {
+        switch index {
+        case 0..<9:
+            return String(index + 1)
+        case 9..<(9 + letterCount):
+            return String(UnicodeScalar(UInt8(97 + (index - 9))))  // 'a' = 97
+        default:
+            return nil
+        }
+    }
+
+    /// The 0-based action index a typed character selects, or nil if the
+    /// character isn't a shortcut key. Digits 1–9 → 0–8, letters a–z
+    /// (case-insensitive) → 9–34.
+    static func index(for character: Character) -> Int? {
+        if let digit = character.wholeNumberValue, (1...9).contains(digit) {
+            return digit - 1
+        }
+        guard let lower = character.lowercased().unicodeScalars.first,
+              lower.value >= 97, lower.value <= 122 else {
+            return nil
+        }
+        return 9 + Int(lower.value - 97)
+    }
+}
+
 final class PopupViewModel: ObservableObject {
     @Published var selectedIndex: Int = 0
     @Published var showsPreview: Bool = false
@@ -118,7 +153,7 @@ struct PopupView: View {
     private func row(index: Int, action: TextAction, theme: PopupTheme) -> some View {
         let isSelected = index == model.selectedIndex
         HStack(spacing: 10) {
-            Text("\(index + 1)")
+            Text(ActionShortcutKey.label(for: index) ?? "")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .frame(width: 18, height: 18)
                 .background(

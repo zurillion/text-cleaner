@@ -139,9 +139,9 @@ final class PopupWindowController {
         mainPanel.onMoveDown   = { [weak model] in model?.moveDown() }
         mainPanel.onConfirm    = { [weak self] in self?.confirmSelection() }
         mainPanel.onCancel     = { [weak self] in self?.handleEscape() }
-        mainPanel.onNumber     = { [weak self, weak model] num in
-            guard let model = model, num >= 1, num <= model.actions.count else { return }
-            self?.commitAction(model.actions[num - 1])
+        mainPanel.onShortcut   = { [weak self, weak model] index in
+            guard let model = model, model.actions.indices.contains(index) else { return }
+            self?.commitAction(model.actions[index])
         }
         mainPanel.onTogglePreview = { [weak self] in self?.togglePreview() }
         mainPanel.onBeginEdit     = { [weak self] in self?.beginEdit() }
@@ -687,7 +687,8 @@ final class PopupPanel: NSPanel {
     var onMoveDown:      (() -> Void)?
     var onConfirm:       (() -> Void)?
     var onCancel:        (() -> Void)?
-    var onNumber:        ((Int) -> Void)?
+    /// 0-based index of the action selected via a 1–9 / a–z shortcut key.
+    var onShortcut:      ((Int) -> Void)?
     var onTogglePreview: (() -> Void)?
     var onBeginEdit:     (() -> Void)?
     /// Inspected before any keyDown switch. If it returns true the event
@@ -716,9 +717,8 @@ final class PopupPanel: NSPanel {
         default:
             if let chars = event.charactersIgnoringModifiers,
                chars.count == 1,
-               let digit = Int(chars),
-               (1...9).contains(digit) {
-                onNumber?(digit)
+               let index = ActionShortcutKey.index(for: chars[chars.startIndex]) {
+                onShortcut?(index)
             } else {
                 super.keyDown(with: event)
             }

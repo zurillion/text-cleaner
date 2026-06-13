@@ -123,7 +123,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 actionsList
                 HStack(alignment: .top) {
-                    Text("Drag a row by its handle to reorder. The number is the keyboard shortcut while the popup is open; disabled actions get no number and sink below the enabled ones, where the only way to bring them back is the toggle.")
+                    Text("Drag a row by its handle to reorder. The badge (1–9 then a–z) is the keyboard shortcut while the popup is open; positions past the 35th and disabled actions get none, and disabled rows sink below the enabled ones where the only way back is the toggle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -231,7 +231,8 @@ struct SettingsView: View {
         guard pref.enabled else { return "·" }
         let enabledKinds = settings.actionPreferences.filter(\.enabled).map(\.kind)
         if let idx = enabledKinds.firstIndex(of: pref.kind) {
-            return "\(idx + 1)"
+            // 1–9 then a–z; positions past that have no shortcut.
+            return ActionShortcutKey.label(for: idx) ?? "·"
         }
         return "·"
     }
