@@ -56,15 +56,23 @@ final class PopupViewModel: ObservableObject {
     /// definition already visible.
     var selectionFromKeyboard = false
 
+    /// Hover events are ignored until this instant. Keyboard navigation
+    /// pushes it a little into the future so that rows sliding under a
+    /// *stationary* cursor during the scroll don't hijack the selection
+    /// (which otherwise makes arrow-key nav fight the mouse).
+    var ignoreHoverUntil: Date = .distantPast
+
     func moveUp() {
         guard !actions.isEmpty else { return }
         selectionFromKeyboard = true
+        ignoreHoverUntil = Date().addingTimeInterval(0.25)
         selectedIndex = (selectedIndex - 1 + actions.count) % actions.count
     }
 
     func moveDown() {
         guard !actions.isEmpty else { return }
         selectionFromKeyboard = true
+        ignoreHoverUntil = Date().addingTimeInterval(0.25)
         selectedIndex = (selectedIndex + 1) % actions.count
     }
 
@@ -112,9 +120,11 @@ struct PopupView: View {
                     // cursor (the hovered row is already on screen).
                     guard model.selectionFromKeyboard else { return }
                     guard model.actions.indices.contains(newValue) else { return }
-                    withAnimation(.easeOut(duration: 0.1)) {
-                        proxy.scrollTo(model.actions[newValue].id, anchor: .center)
-                    }
+                    // anchor: nil scrolls the minimum needed to reveal the
+                    // row (a no-op when it's already visible), and no
+                    // withAnimation so held-key repeats don't stack
+                    // overlapping scroll animations and flicker.
+                    proxy.scrollTo(model.actions[newValue].id, anchor: nil)
                 }
             }
 
@@ -193,10 +203,12 @@ struct PopupView: View {
         )
         .contentShape(Rectangle())
         .onHover { hovering in
-            if hovering && !model.isEditing {
-                model.selectionFromKeyboard = false
-                model.selectedIndex = index
-            }
+            // Ignore hover that fires merely because a row slid under a
+            // stationary cursor during a keyboard scroll.
+            guard hovering, !model.isEditing, Date() >= model.ignoreHoverUntil
+            else { return }
+            model.selectionFromKeyboard = false
+            model.selectedIndex = index
         }
         .onTapGesture {
             // Don't let a stray click on the main popup discard an
