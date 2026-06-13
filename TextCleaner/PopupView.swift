@@ -50,13 +50,21 @@ final class PopupViewModel: ObservableObject {
 
     var sourceAttributed: NSAttributedString = NSAttributedString()
 
+    /// True when the most recent `selectedIndex` change came from
+    /// keyboard navigation. Mouse hover sets it false so the list
+    /// doesn't auto-scroll and "chase" the cursor — a hovered row is by
+    /// definition already visible.
+    var selectionFromKeyboard = false
+
     func moveUp() {
         guard !actions.isEmpty else { return }
+        selectionFromKeyboard = true
         selectedIndex = (selectedIndex - 1 + actions.count) % actions.count
     }
 
     func moveDown() {
         guard !actions.isEmpty else { return }
+        selectionFromKeyboard = true
         selectedIndex = (selectedIndex + 1) % actions.count
     }
 
@@ -99,6 +107,10 @@ struct PopupView: View {
                 .frame(maxHeight: 360)
                 .scrollIndicators(.automatic)
                 .onChange(of: model.selectedIndex) { _, newValue in
+                    // Only follow keyboard navigation. Hover-driven
+                    // selection must not scroll, or the list chases the
+                    // cursor (the hovered row is already on screen).
+                    guard model.selectionFromKeyboard else { return }
                     guard model.actions.indices.contains(newValue) else { return }
                     withAnimation(.easeOut(duration: 0.1)) {
                         proxy.scrollTo(model.actions[newValue].id, anchor: .center)
@@ -181,7 +193,10 @@ struct PopupView: View {
         )
         .contentShape(Rectangle())
         .onHover { hovering in
-            if hovering && !model.isEditing { model.selectedIndex = index }
+            if hovering && !model.isEditing {
+                model.selectionFromKeyboard = false
+                model.selectedIndex = index
+            }
         }
         .onTapGesture {
             // Don't let a stray click on the main popup discard an
