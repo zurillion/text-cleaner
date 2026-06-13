@@ -161,7 +161,7 @@ final class AppSettings: ObservableObject {
     }
 
     static var defaultActionPreferences: [ActionPreference] {
-        TextActionKind.allCases.map { ActionPreference(kind: $0, enabled: true) }
+        TextActionKind.allCases.map { ActionPreference(kind: $0, enabled: $0.defaultEnabled) }
     }
 
     private init() {
@@ -245,9 +245,10 @@ final class AppSettings: ObservableObject {
 
     /// Decodes the saved list leniently: unknown kinds are dropped and
     /// any kinds present in `TextActionKind.allCases` but missing from
-    /// the saved list are appended (enabled). This way adding or
-    /// removing a built-in action in code doesn't wipe the user's
-    /// existing customisations.
+    /// the saved list are appended at their `defaultEnabled` state. This
+    /// way adding a built-in action in code doesn't wipe the user's
+    /// existing customisations, and newly added Unicode styles arrive
+    /// disabled rather than flooding the popup of an existing user.
     private static func decodePreferences(from data: Data) -> [ActionPreference] {
         struct Raw: Codable { let kind: String; var enabled: Bool }
         let raws = (try? JSONDecoder().decode([Raw].self, from: data)) ?? []
@@ -258,7 +259,7 @@ final class AppSettings: ObservableObject {
         let known = Set(stored.map(\.kind))
         let missing = TextActionKind.allCases
             .filter { !known.contains($0) }
-            .map { ActionPreference(kind: $0, enabled: true) }
+            .map { ActionPreference(kind: $0, enabled: $0.defaultEnabled) }
         return stored + missing
     }
 }
