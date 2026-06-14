@@ -132,7 +132,7 @@ struct SettingsView: View {
                     Button("Reset") {
                         withAnimation(.easeInOut(duration: 0.18)) {
                             settings.actionPreferences = AppSettings.defaultActionPreferences
-                            settings.separatorAfterKinds = []
+                            settings.separatorAfterKinds = AppSettings.defaultSeparatorAfterKinds
                         }
                     }
                 }

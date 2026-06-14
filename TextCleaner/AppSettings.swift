@@ -186,6 +186,13 @@ final class AppSettings: ObservableObject {
         TextActionKind.allCases.map { ActionPreference(kind: $0, enabled: $0.defaultEnabled) }
     }
 
+    /// Separators drawn on a fresh install: one between the original
+    /// text-processing actions and the Unicode styles, one between the
+    /// upside-down / reverse pair and the rest of the styles.
+    static var defaultSeparatorAfterKinds: Set<TextActionKind> {
+        [.cleanURL, .reverse]
+    }
+
     private init() {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [
@@ -228,10 +235,14 @@ final class AppSettings: ObservableObject {
             self.actionPreferences = Self.defaultActionPreferences
         }
 
-        self.separatorAfterKinds = Set(
-            (defaults.stringArray(forKey: Key.separatorAfterKinds) ?? [])
-                .compactMap(TextActionKind.init(rawValue:))
-        )
+        // Missing key = first run, seed with the defaults. An explicitly
+        // saved empty array (the user removed every separator) stays
+        // empty.
+        if let raw = defaults.stringArray(forKey: Key.separatorAfterKinds) {
+            self.separatorAfterKinds = Set(raw.compactMap(TextActionKind.init(rawValue:)))
+        } else {
+            self.separatorAfterKinds = Self.defaultSeparatorAfterKinds
+        }
 
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
     }
