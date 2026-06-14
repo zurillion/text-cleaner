@@ -34,6 +34,7 @@ final class AppSettings: ObservableObject {
         static let emojiPickerShortcut       = "TextCleaner.emojiPickerShortcut"
         static let recentPickedCharacters    = "TextCleaner.recentPickedCharacters"
         static let recentPickedEmojis        = "TextCleaner.recentPickedEmojis"
+        static let separatorAfterKinds       = "TextCleaner.separatorAfterKinds"
     }
 
     /// How many entries the picker's Recent section keeps. Pushing a
@@ -127,6 +128,27 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// Kinds that have a visual separator drawn immediately after them,
+    /// both in the Settings list and (between enabled actions) in the
+    /// popup. Anchoring a separator to the action above it means it
+    /// survives reordering and enable/disable without bookkeeping.
+    @Published var separatorAfterKinds: Set<TextActionKind> {
+        didSet {
+            UserDefaults.standard.set(
+                separatorAfterKinds.map(\.rawValue),
+                forKey: Key.separatorAfterKinds
+            )
+        }
+    }
+
+    func toggleSeparator(afterKind kind: TextActionKind) {
+        if separatorAfterKinds.contains(kind) {
+            separatorAfterKinds.remove(kind)
+        } else {
+            separatorAfterKinds.insert(kind)
+        }
+    }
+
     /// Mirrors `SMAppService.mainApp.status`. We don't persist this to
     /// UserDefaults because the system already tracks the registration
     /// — the source of truth is SMAppService itself, queried at init.
@@ -205,6 +227,11 @@ final class AppSettings: ObservableObject {
         } else {
             self.actionPreferences = Self.defaultActionPreferences
         }
+
+        self.separatorAfterKinds = Set(
+            (defaults.stringArray(forKey: Key.separatorAfterKinds) ?? [])
+                .compactMap(TextActionKind.init(rawValue:))
+        )
 
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
     }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -123,7 +124,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 actionsList
                 HStack(alignment: .top) {
-                    Text("Drag a row by its handle to reorder. The badge (1–9 then a–z) is the keyboard shortcut while the popup is open; positions past the 35th and disabled actions get none, and disabled rows sink below the enabled ones where the only way back is the toggle.")
+                    Text("Drag a row by its handle to reorder. The badge (1–9 then a–z) is the keyboard shortcut while the popup is open; positions past the 35th and disabled actions get none. Disabled rows sink below the enabled ones. ⌥-click a gap between two rows to add a separator there (it shows in the popup too); ⌥-click it again to remove it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -131,6 +132,7 @@ struct SettingsView: View {
                     Button("Reset") {
                         withAnimation(.easeInOut(duration: 0.18)) {
                             settings.actionPreferences = AppSettings.defaultActionPreferences
+                            settings.separatorAfterKinds = []
                         }
                     }
                 }
@@ -156,14 +158,31 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func dropStrip(slot: Int) -> some View {
+        // The action immediately above this gap, if any. A separator is
+        // anchored to it (⌥-click toggles), so it survives reordering
+        // and enable/disable.
+        let aboveKind: TextActionKind? = slot >= 1
+            && settings.actionPreferences.indices.contains(slot - 1)
+            ? settings.actionPreferences[slot - 1].kind
+            : nil
         // Only slots within the enabled section (0…enabledCount) can
         // accept a drop. Strips below the enabled/disabled boundary
         // still render at the same height so the layout doesn't jump
         // mid-drag, but they refuse the drop and stay blank.
-        DropStripView(isValid: slot <= enabledCount) { rawKind in
-            guard let kind = TextActionKind(rawValue: rawKind) else { return }
-            moveAction(kind: kind, toSlot: slot)
-        }
+        DropStripView(
+            isValid: slot <= enabledCount,
+            hasSeparator: aboveKind.map { settings.separatorAfterKinds.contains($0) } ?? false,
+            onDrop: { rawKind in
+                guard let kind = TextActionKind(rawValue: rawKind) else { return }
+                moveAction(kind: kind, toSlot: slot)
+            },
+            onOptionClick: {
+                guard let kind = aboveKind else { return }
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    settings.toggleSeparator(afterKind: kind)
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -319,19 +338,34 @@ struct SettingsView: View {
 /// row spacing doesn't change mid-drag) but refuse the drop.
 private struct DropStripView: View {
     let isValid: Bool
+    let hasSeparator: Bool
     let onDrop: (String) -> Void
+    let onOptionClick: () -> Void
     @State private var isTargeted: Bool = false
 
     var body: some View {
         Color.clear
-            .frame(height: 8)
+            .frame(height: 10)
             .overlay {
                 if isTargeted && isValid {
+                    // Drag insertion indicator.
                     RoundedRectangle(cornerRadius: 1.5)
                         .fill(Color.accentColor)
                         .frame(height: 3)
                         .padding(.horizontal, 6)
+                } else if hasSeparator {
+                    // Persistent user-placed separator.
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.secondary.opacity(0.55))
+                        .frame(height: 2)
+                        .padding(.horizontal, 6)
                 }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                // ⌥-click toggles a separator in this gap; a plain click
+                // is ignored so it doesn't interfere with row dragging.
+                if NSEvent.modifierFlags.contains(.option) { onOptionClick() }
             }
             .dropDestination(for: String.self) { items, _ in
                 guard isValid, let raw = items.first else { return false }

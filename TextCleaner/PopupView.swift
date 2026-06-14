@@ -47,6 +47,8 @@ final class PopupViewModel: ObservableObject {
             }
         }
     }
+    /// Indices into `actions` after which a separator line is drawn.
+    @Published var separatorAfterIndex: Set<Int> = []
 
     var sourceAttributed: NSAttributedString = NSAttributedString()
 
@@ -74,6 +76,20 @@ final class PopupViewModel: ObservableObject {
         selectionFromKeyboard = true
         ignoreHoverUntil = Date().addingTimeInterval(0.25)
         selectedIndex = (selectedIndex + 1) % actions.count
+    }
+
+    func moveToStart() {
+        guard !actions.isEmpty else { return }
+        selectionFromKeyboard = true
+        ignoreHoverUntil = Date().addingTimeInterval(0.25)
+        selectedIndex = 0
+    }
+
+    func moveToEnd() {
+        guard !actions.isEmpty else { return }
+        selectionFromKeyboard = true
+        ignoreHoverUntil = Date().addingTimeInterval(0.25)
+        selectedIndex = actions.count - 1
     }
 
     /// Attributed text shown in the preview pane for the current state.
@@ -109,6 +125,9 @@ struct PopupView: View {
                         ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
                             row(index: index, action: action, theme: theme)
                                 .id(action.id)
+                            if model.separatorAfterIndex.contains(index) {
+                                separatorLine(theme: theme)
+                            }
                         }
                     }
                 }
@@ -169,6 +188,14 @@ struct PopupView: View {
                 onEnded: onDragEnded
             )
         )
+    }
+
+    private func separatorLine(theme: PopupTheme) -> some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(theme.foreground.opacity(0.25))
+            .frame(height: 1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
     }
 
     @ViewBuilder

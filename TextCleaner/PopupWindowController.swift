@@ -54,7 +54,9 @@ final class PopupWindowController {
 
         previousFrontmost = NSWorkspace.shared.frontmostApplication
 
-        model.actions = Self.enabledActions()
+        let enabled = Self.enabledActions()
+        model.actions = enabled
+        model.separatorAfterIndex = Self.separatorIndices(for: enabled)
         model.sourceAttributed = PasteSimulator.readSourceAttributed()
         model.selectedIndex = 0
         model.showsPreview = false
@@ -115,7 +117,9 @@ final class PopupWindowController {
 
     private func build() {
         let model = PopupViewModel()
-        model.actions = Self.enabledActions()
+        let enabled = Self.enabledActions()
+        model.actions = enabled
+        model.separatorAfterIndex = Self.separatorIndices(for: enabled)
         self.model = model
 
         let popupView = PopupView(
@@ -137,6 +141,8 @@ final class PopupWindowController {
         mainPanel.becomesKeyOnlyIfNeeded = true
         mainPanel.onMoveUp     = { [weak model] in model?.moveUp() }
         mainPanel.onMoveDown   = { [weak model] in model?.moveDown() }
+        mainPanel.onJumpToStart = { [weak model] in model?.moveToStart() }
+        mainPanel.onJumpToEnd   = { [weak model] in model?.moveToEnd() }
         mainPanel.onConfirm    = { [weak self] in self?.confirmSelection() }
         mainPanel.onCancel     = { [weak self] in self?.handleEscape() }
         mainPanel.onShortcut   = { [weak self, weak model] index in
@@ -659,6 +665,19 @@ final class PopupWindowController {
             .compactMap { byKind[$0.kind] }
     }
 
+    /// Indices (into the enabled-actions list) after which a separator
+    /// is drawn — i.e. enabled actions whose kind the user marked with
+    /// a separator, excluding a trailing one (nothing after it).
+    private static func separatorIndices(for actions: [TextAction]) -> Set<Int> {
+        let marked = AppSettings.shared.separatorAfterKinds
+        var result = Set<Int>()
+        for (index, action) in actions.enumerated()
+        where index < actions.count - 1 && marked.contains(action.kind) {
+            result.insert(index)
+        }
+        return result
+    }
+
     // MARK: - Paste
 
     private func pasteAndClose(attributed: NSAttributedString) {
@@ -685,6 +704,8 @@ final class PopupWindowController {
 final class PopupPanel: NSPanel {
     var onMoveUp:        (() -> Void)?
     var onMoveDown:      (() -> Void)?
+    var onJumpToStart:   (() -> Void)?
+    var onJumpToEnd:     (() -> Void)?
     var onConfirm:       (() -> Void)?
     var onCancel:        (() -> Void)?
     /// 0-based index of the action selected via a 1–9 / a–z shortcut key.
@@ -703,9 +724,9 @@ final class PopupPanel: NSPanel {
         if customShortcut?(event) == true { return }
         switch Int(event.keyCode) {
         case kVK_UpArrow:
-            onMoveUp?()
+            if event.modifierFlags.contains(.shift) { onJumpToStart?() } else { onMoveUp?() }
         case kVK_DownArrow:
-            onMoveDown?()
+            if event.modifierFlags.contains(.shift) { onJumpToEnd?() } else { onMoveDown?() }
         case kVK_Return, kVK_ANSI_KeypadEnter:
             onConfirm?()
         case kVK_Escape:
