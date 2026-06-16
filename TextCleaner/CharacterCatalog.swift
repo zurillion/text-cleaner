@@ -48,13 +48,20 @@ enum CharacterCatalog {
         CharacterSection(title: "Superscript", entries: superscript),
         CharacterSection(title: "Subscript", entries: subscriptEntries),
         CharacterSection(title: "Marks", entries: marks),
-        CharacterSection(title: "Music", entries: music),
         CharacterSection(title: "Mathematical Symbols", entries: math),
         CharacterSection(title: "Differential Calculus", entries: calculus),
         CharacterSection(title: "Set Theory", entries: setTheory),
         CharacterSection(title: "Logic", entries: logic),
         CharacterSection(title: "Math Letters", entries: mathLetters),
         CharacterSection(title: "Arrows", entries: arrows),
+        // Music goes last so the well-supported sections above are
+        // never pushed off-screen by a long musical block.
+        CharacterSection(title: "Music – Notes",       entries: musicNotes),
+        CharacterSection(title: "Music – Accidentals", entries: musicAccidentals),
+        CharacterSection(title: "Music – Clefs",       entries: musicClefs),
+        CharacterSection(title: "Music – Barlines",    entries: musicBarlines),
+        CharacterSection(title: "Music – Fermata",     entries: musicFermata),
+        CharacterSection(title: "Music – Dynamics",    entries: musicDynamics),
     ]
 
     private static func flat(_ string: String) -> [CharacterEntry] {
@@ -94,34 +101,35 @@ enum CharacterCatalog {
 
     // MARK: - Music
     //
-    // First block: well-supported notes/accidentals from Miscellaneous
-    // Symbols (U+2660…). Second block: the U+1D100 Musical Symbols
-    // range — clefs, rests, barlines, time signatures, ornaments. The
-    // 1D1xx glyphs need a font with music coverage (most modern macOS
-    // installs render them; on a bare system they may fall back to
-    // .notdef). Descriptions add common musical terms not in the
-    // official Unicode names so search like "treble", "fermata",
-    // "repeat" finds the right glyph.
-    private static let music: [CharacterEntry] = [
-        // Notes
+    // Split into one sub-section per glyph family so the popup header
+    // ("Music – Notes", "Music – Clefs", …) makes the context obvious.
+    // The five groups whose U+1D100 glyphs the system font doesn't
+    // ship (time signatures, breath / caesura / segno / coda, note
+    // heads, rests, arpeggiato) are deliberately omitted — they'd
+    // render as missing-glyph boxes.
+
+    private static let musicNotes: [CharacterEntry] = [
         CharacterEntry("♩", "quarter note"),
         CharacterEntry("♪", "eighth note"),
         CharacterEntry("♫", "beamed eighth notes"),
         CharacterEntry("♬", "beamed sixteenth notes"),
+    ]
 
-        // Accidentals
+    private static let musicAccidentals: [CharacterEntry] = [
         CharacterEntry("♭", "flat"),
         CharacterEntry("♮", "natural"),
         CharacterEntry("♯", "sharp"),
         CharacterEntry("𝄪", "double sharp"),
         CharacterEntry("𝄫", "double flat"),
+    ]
 
-        // Clefs
+    private static let musicClefs: [CharacterEntry] = [
         CharacterEntry("𝄞", "treble clef g clef"),
         CharacterEntry("𝄡", "alto clef c clef"),
         CharacterEntry("𝄢", "bass clef f clef"),
+    ]
 
-        // Barlines / repeats
+    private static let musicBarlines: [CharacterEntry] = [
         CharacterEntry("𝄀", "single barline"),
         CharacterEntry("𝄁", "double barline"),
         CharacterEntry("𝄂", "final barline"),
@@ -130,45 +138,19 @@ enum CharacterCatalog {
         CharacterEntry("𝄅", "short barline"),
         CharacterEntry("𝄆", "left repeat begin"),
         CharacterEntry("𝄇", "right repeat end"),
+    ]
 
-        // Time signatures
-        CharacterEntry("𝄴", "common time"),
-        CharacterEntry("𝄵", "cut time alla breve"),
-
-        // Phrasing / ornaments
+    private static let musicFermata: [CharacterEntry] = [
         CharacterEntry("𝄐", "fermata above"),
         CharacterEntry("𝄑", "fermata below"),
-        CharacterEntry("𝄒", "breath mark"),
-        CharacterEntry("𝄓", "caesura"),
-        CharacterEntry("𝄋", "segno"),
-        CharacterEntry("𝄌", "coda"),
+    ]
 
-        // Note heads & stems (heads)
-        CharacterEntry("𝅝", "whole note semibreve"),
-        CharacterEntry("𝅗𝅥", "half note minim"),
-        CharacterEntry("𝅘𝅥", "quarter note crotchet"),
-        CharacterEntry("𝅘𝅥𝅮", "eighth note quaver"),
-        CharacterEntry("𝅘𝅥𝅯", "sixteenth note semiquaver"),
-        CharacterEntry("𝅘𝅥𝅰", "thirty-second note demisemiquaver"),
-
-        // Rests
-        CharacterEntry("𝄻", "whole rest"),
-        CharacterEntry("𝄼", "half rest"),
-        CharacterEntry("𝄽", "quarter rest"),
-        CharacterEntry("𝄾", "eighth rest"),
-        CharacterEntry("𝄿", "sixteenth rest"),
-        CharacterEntry("𝅀", "thirty-second rest"),
-
-        // Dynamics letters (musical italic forms, render where supported)
+    private static let musicDynamics: [CharacterEntry] = [
         CharacterEntry("𝆏", "piano dynamic soft"),
         CharacterEntry("𝆐", "mezzo dynamic"),
         CharacterEntry("𝆑", "forte dynamic loud"),
         CharacterEntry("𝆒", "fortissimo"),
         CharacterEntry("𝆓", "sforzando"),
-
-        // Misc
-        CharacterEntry("𝆺", "arpeggiato"),
-        CharacterEntry("𝆺𝅥", "arpeggiato with stem"),
     ]
 
     // MARK: - Math
