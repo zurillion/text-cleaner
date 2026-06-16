@@ -48,6 +48,7 @@ enum CharacterCatalog {
         CharacterSection(title: "Superscript", entries: superscript),
         CharacterSection(title: "Subscript", entries: subscriptEntries),
         CharacterSection(title: "Marks", entries: marks),
+        CharacterSection(title: "Music", entries: music),
         CharacterSection(title: "Mathematical Symbols", entries: math),
         CharacterSection(title: "Differential Calculus", entries: calculus),
         CharacterSection(title: "Set Theory", entries: setTheory),
@@ -89,8 +90,85 @@ enum CharacterCatalog {
         CharacterEntry("′", "prime"),
         CharacterEntry("″", "double prime"),
         CharacterEntry("‴", "triple prime"),
+    ]
+
+    // MARK: - Music
+    //
+    // First block: well-supported notes/accidentals from Miscellaneous
+    // Symbols (U+2660…). Second block: the U+1D100 Musical Symbols
+    // range — clefs, rests, barlines, time signatures, ornaments. The
+    // 1D1xx glyphs need a font with music coverage (most modern macOS
+    // installs render them; on a bare system they may fall back to
+    // .notdef). Descriptions add common musical terms not in the
+    // official Unicode names so search like "treble", "fermata",
+    // "repeat" finds the right glyph.
+    private static let music: [CharacterEntry] = [
+        // Notes
+        CharacterEntry("♩", "quarter note"),
+        CharacterEntry("♪", "eighth note"),
+        CharacterEntry("♫", "beamed eighth notes"),
+        CharacterEntry("♬", "beamed sixteenth notes"),
+
+        // Accidentals
         CharacterEntry("♭", "flat"),
         CharacterEntry("♮", "natural"),
+        CharacterEntry("♯", "sharp"),
+        CharacterEntry("𝄪", "double sharp"),
+        CharacterEntry("𝄫", "double flat"),
+
+        // Clefs
+        CharacterEntry("𝄞", "treble clef g clef"),
+        CharacterEntry("𝄡", "alto clef c clef"),
+        CharacterEntry("𝄢", "bass clef f clef"),
+
+        // Barlines / repeats
+        CharacterEntry("𝄀", "single barline"),
+        CharacterEntry("𝄁", "double barline"),
+        CharacterEntry("𝄂", "final barline"),
+        CharacterEntry("𝄃", "reverse final barline"),
+        CharacterEntry("𝄄", "dashed barline"),
+        CharacterEntry("𝄅", "short barline"),
+        CharacterEntry("𝄆", "left repeat begin"),
+        CharacterEntry("𝄇", "right repeat end"),
+
+        // Time signatures
+        CharacterEntry("𝄴", "common time"),
+        CharacterEntry("𝄵", "cut time alla breve"),
+
+        // Phrasing / ornaments
+        CharacterEntry("𝄐", "fermata above"),
+        CharacterEntry("𝄑", "fermata below"),
+        CharacterEntry("𝄒", "breath mark"),
+        CharacterEntry("𝄓", "caesura"),
+        CharacterEntry("𝄋", "segno"),
+        CharacterEntry("𝄌", "coda"),
+
+        // Note heads & stems (heads)
+        CharacterEntry("𝅝", "whole note semibreve"),
+        CharacterEntry("𝅗𝅥", "half note minim"),
+        CharacterEntry("𝅘𝅥", "quarter note crotchet"),
+        CharacterEntry("𝅘𝅥𝅮", "eighth note quaver"),
+        CharacterEntry("𝅘𝅥𝅯", "sixteenth note semiquaver"),
+        CharacterEntry("𝅘𝅥𝅰", "thirty-second note demisemiquaver"),
+
+        // Rests
+        CharacterEntry("𝄻", "whole rest"),
+        CharacterEntry("𝄼", "half rest"),
+        CharacterEntry("𝄽", "quarter rest"),
+        CharacterEntry("𝄾", "eighth rest"),
+        CharacterEntry("𝄿", "sixteenth rest"),
+        CharacterEntry("𝅀", "thirty-second rest"),
+
+        // Dynamics letters (musical italic forms, render where supported)
+        CharacterEntry("𝆏", "piano dynamic soft"),
+        CharacterEntry("𝆐", "mezzo dynamic"),
+        CharacterEntry("𝆑", "forte dynamic loud"),
+        CharacterEntry("𝆒", "fortissimo"),
+        CharacterEntry("𝆓", "sforzando"),
+
+        // Misc
+        CharacterEntry("𝆺", "arpeggiato"),
+        CharacterEntry("𝆺𝅥", "arpeggiato with stem"),
     ]
 
     // MARK: - Math
