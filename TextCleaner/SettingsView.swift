@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
@@ -215,16 +216,29 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func dragHandle(pref: ActionPreference, action: TextAction?) -> some View {
-        let icon = Image(systemName: "line.3.horizontal")
+        // `line.horizontal.3` (SF Symbols 1, macOS 11+) rather than the
+        // macOS-13 rename `line.3.horizontal`, which renders blank on
+        // Monterey. The old name still resolves as an alias on 13+.
+        let icon = Image(systemName: "line.horizontal.3")
             .font(.system(size: 11, weight: .semibold))
             .frame(width: 16, height: 18)
             .contentShape(Rectangle())
         if pref.enabled {
-            icon
-                .foregroundStyle(.secondary)
-                .draggable(pref.kind.rawValue) {
-                    dragPreview(pref: pref, action: action)
-                }
+            // `.draggable(_:preview:)` is macOS 13+. On Monterey fall back
+            // to `.onDrag` (macOS 11+); same payload (the kind's rawValue
+            // as text), only the drag image differs — the system uses a
+            // snapshot of the handle instead of our custom card preview.
+            if #available(macOS 13, *) {
+                icon
+                    .foregroundStyle(.secondary)
+                    .draggable(pref.kind.rawValue) {
+                        dragPreview(pref: pref, action: action)
+                    }
+            } else {
+                icon
+                    .foregroundStyle(.secondary)
+                    .onDrag { NSItemProvider(object: pref.kind.rawValue as NSString) }
+            }
         } else {
             // Greyed out and inert — disabled rows can only be brought
             // back via the toggle, per the user's spec.
@@ -333,7 +347,7 @@ struct SettingsView: View {
 // MARK: - Drag-and-drop strip
 
 /// Thin strip rendered between rows in the actions list. Reports as a
-/// drop target via `dropDestination`; when the dragged payload hovers
+/// drop target via `onDrop`; when the dragged payload hovers
 /// over a strip that's inside the enabled section, a horizontal accent
 /// bar appears at that position to show where the row will land.
 /// Strips below the enabled/disabled boundary stay laid out (so the
@@ -369,12 +383,17 @@ private struct DropStripView: View {
                 // is ignored so it doesn't interfere with row dragging.
                 if NSEvent.modifierFlags.contains(.option) { onOptionClick() }
             }
-            .dropDestination(for: String.self) { items, _ in
-                guard isValid, let raw = items.first else { return false }
-                onDrop(raw)
+            // `.dropDestination` is macOS 13+; `.onDrop` (macOS 11+) is the
+            // portable equivalent. The payload arrives as an NSItemProvider
+            // whose text representation we load asynchronously, then hop to
+            // the main actor to mutate the model.
+            .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
+                guard isValid, let provider = providers.first else { return false }
+                _ = provider.loadObject(ofClass: String.self) { raw, _ in
+                    guard let raw else { return }
+                    DispatchQueue.main.async { onDrop(raw) }
+                }
                 return true
-            } isTargeted: { targeted in
-                isTargeted = targeted
             }
     }
 }
