@@ -77,21 +77,34 @@ trap 'rm -rf "$STAGING"' EXIT
 cp -R "$APP_PATH" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
-# Include the user guide if it lives at the repo root. Looks for a PDF
-# first (nicer for end users), falls back to the Markdown source so the
-# DMG always carries some kind of documentation when it's available.
-# Inside the DMG it shows up as "User Guide.<ext>" rather than the
-# repo-style "USAGE.<ext>" filename.
+# Include the user guide(s) if they live at the repo root. Looks for the
+# English (USAGE.{pdf,md}) and Italian (USAGE.it.{pdf,md}) versions
+# separately, preferring PDF over Markdown for each. Inside the DMG the
+# files show up with friendly names ("User Guide.pdf", "Guida d'uso.pdf")
+# rather than the repo-style USAGE.* convention.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-for candidate in "$REPO_ROOT/USAGE.pdf" "$REPO_ROOT/USAGE.md"; do
-    if [[ -f "$candidate" ]]; then
-        ext="${candidate##*.}"
-        cp "$candidate" "$STAGING/User Guide.$ext"
-        echo "  including: $(basename "$candidate") → User Guide.$ext"
-        break
-    fi
-done
+
+include_guide() {
+    local label="$1"; shift
+    local candidate
+    for candidate in "$@"; do
+        if [[ -f "$candidate" ]]; then
+            local ext="${candidate##*.}"
+            cp "$candidate" "$STAGING/$label.$ext"
+            echo "  including: $(basename "$candidate") → $label.$ext"
+            return
+        fi
+    done
+}
+
+include_guide "User Guide" \
+    "$REPO_ROOT/USAGE.pdf" \
+    "$REPO_ROOT/USAGE.md"
+
+include_guide "Guida d'uso" \
+    "$REPO_ROOT/USAGE.it.pdf" \
+    "$REPO_ROOT/USAGE.it.md"
 
 echo "› Creating ${DMG_NAME}…"
 rm -f "$DMG_PATH"
