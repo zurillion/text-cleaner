@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 final class CharacterPickerModel: ObservableObject {
@@ -27,6 +28,13 @@ final class CharacterPickerModel: ObservableObject {
     /// `AppSettings.recentPickedCharacters`. Rendered as a dynamic
     /// section above the static catalog when non-empty.
     @Published var recents: [CharacterEntry] = []
+
+    /// When true the window stays open after a pick: clicking a glyph
+    /// inserts it but the floating panel keeps control, so the user can
+    /// insert several in a row (and alternate with normal typing). Driven
+    /// by the controller via the pin button; mirrored here so the view
+    /// can show the pin's active state and suppress click-to-scroll.
+    @Published var isPinned: Bool = false
 
     init(sections: [CharacterSection] = CharacterCatalog.sections) {
         self.sections = sections
@@ -119,6 +127,10 @@ struct CharacterPickerView: View {
     @ObservedObject var model: CharacterPickerModel
     @ObservedObject var settings: AppSettings
     let onSelect: (String) -> Void
+    let onTogglePin: () -> Void
+    let onDragBegan: (NSPoint) -> Void
+    let onDragChanged: (NSPoint) -> Void
+    let onDragEnded: () -> Void
 
     private let cellSize: CGFloat = 32
     private let cellSpacing: CGFloat = 4
@@ -154,6 +166,11 @@ struct CharacterPickerView: View {
 
     private func header(theme: PopupTheme) -> some View {
         let entry = model.displayedEntry
+        // The whole header is a window-drag surface (open-hand cursor +
+        // drag-to-move), mirroring the transformations popup. Non-interactive
+        // children are marked `allowsHitTesting(false)` so clicks fall
+        // through to the drag handle behind them; only the pin button stays
+        // interactive.
         return HStack(spacing: 14) {
             Text(entry?.character ?? " ")
                 .font(.system(size: 38))
@@ -163,6 +180,7 @@ struct CharacterPickerView: View {
                         .fill(theme.foreground.opacity(0.06))
                 )
                 .foregroundStyle(theme.foreground)
+                .allowsHitTesting(false)
             VStack(alignment: .leading, spacing: 3) {
                 Text(label(for: entry))
                     .font(.system(size: 13, weight: .medium))
@@ -172,14 +190,45 @@ struct CharacterPickerView: View {
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(theme.secondaryForeground)
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 3) {
-                hint("↩", "Insert", theme: theme)
-                hint("⎋", "Cancel", theme: theme)
+            .allowsHitTesting(false)
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 8) {
+                pinButton(theme: theme)
+                VStack(alignment: .trailing, spacing: 3) {
+                    hint("↩", "Insert", theme: theme)
+                    hint("⎋", "Cancel", theme: theme)
+                }
+                .allowsHitTesting(false)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+        .background(
+            WindowDragHandle(
+                onBegan: onDragBegan,
+                onChanged: onDragChanged,
+                onEnded: onDragEnded
+            )
+        )
+    }
+
+    private func pinButton(theme: PopupTheme) -> some View {
+        Button {
+            onTogglePin()
+        } label: {
+            Image(systemName: model.isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(model.isPinned ? theme.onAccent : theme.secondaryForeground)
+                .frame(width: 22, height: 22)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(model.isPinned ? theme.accent : theme.foreground.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(model.isPinned
+              ? "Pinned — clicks insert without closing. Click to unpin."
+              : "Pin the window to insert several characters in a row.")
     }
 
     private func label(for entry: CharacterEntry?) -> String {
@@ -283,6 +332,11 @@ struct CharacterPickerView: View {
                     }
                 }
                 .onChangeCompat(of: model.selectedIndex) { _ in
+                    // While pinned the selection follows mouse clicks, and
+                    // auto-centering each clicked glyph would make the grid
+                    // jump under the cursor. Keyboard navigation (the reason
+                    // this scroll exists) only happens unpinned anyway.
+                    guard !model.isPinned else { return }
                     guard let entry = model.selectedEntry else { return }
                     withAnimation(.easeOut(duration: 0.12)) {
                         proxy.scrollTo(entry.id, anchor: .center)

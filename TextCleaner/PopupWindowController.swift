@@ -14,6 +14,7 @@ final class PopupWindowController {
 
     private var resignObservers: [NSObjectProtocol] = []
     private var editingKeyMonitor: Any?
+    private var globalClickMonitor: Any?
     private weak var previousFrontmost: NSRunningApplication?
 
     // Drag state — set when the user starts moving the main popup by its
@@ -44,6 +45,7 @@ final class PopupWindowController {
             NotificationCenter.default.removeObserver(observer)
         }
         removeEditingKeyMonitor()
+        removeGlobalClickMonitor()
     }
 
     // MARK: - Public
@@ -78,6 +80,7 @@ final class PopupWindowController {
         NSApp.unhideWithoutActivation()
         positionPanels()
         mainPanel.makeKeyAndOrderFront(nil)
+        installGlobalClickMonitor()
     }
 
     private func applyThemeAppearance() {
@@ -86,8 +89,15 @@ final class PopupWindowController {
         previewPanel?.appearance = appearance
     }
 
-    func close() {
+    /// - Parameter reactivating: when true, focus returns to the app the
+    ///   popup was opened from. Pass false when the user dismissed by
+    ///   clicking into another app, so that app keeps focus. The forced-
+    ///   active (Fonts-panel) path always yields activation regardless,
+    ///   since our app had to foreground itself.
+    func close(reactivating: Bool = true) {
+        guard mainPanel?.isVisible == true else { return }
         ignoreResign = true
+        removeGlobalClickMonitor()
         previewPanel?.orderOut(nil)
         mainPanel?.orderOut(nil)
         removeEditingKeyMonitor()
@@ -100,7 +110,7 @@ final class PopupWindowController {
             // Synchronously yields activation so PasteSimulator's ⌘V
             // lands in previousFrontmost rather than our own app.
             NSApp.hide(nil)
-        } else if let target = previousFrontmost,
+        } else if reactivating, let target = previousFrontmost,
                   target.bundleIdentifier != Bundle.main.bundleIdentifier {
             if #available(macOS 14.0, *) {
                 target.activate()
@@ -189,7 +199,9 @@ final class PopupWindowController {
             if key is NSFontPanel || key is NSColorPanel {
                 return
             }
-            self.close()
+            // A resign means focus went to another window/app; leave it
+            // there rather than reactivating where the popup opened from.
+            self.close(reactivating: false)
         }
     }
 
@@ -638,6 +650,36 @@ final class PopupWindowController {
         if let monitor = editingKeyMonitor {
             NSEvent.removeMonitor(monitor)
             editingKeyMonitor = nil
+        }
+    }
+
+    // MARK: - Click-outside monitor
+    //
+    // Clicking outside the popup should dismiss it (the same as Escape) so
+    // the user is never stuck with a focus-less window. The resign-key
+    // observer handles most cases, but a non-activating panel can keep
+    // floating after an outside click without a reliable resign; a global
+    // mouse monitor catches those clicks directly. Clicks on our own
+    // windows — including the system Fonts/Colors panels, which live in
+    // this process — are local events and never reach this monitor, so the
+    // edit/font flow is unaffected.
+
+    private func installGlobalClickMonitor() {
+        removeGlobalClickMonitor()
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            guard let self = self, !self.ignoreResign else { return }
+            // Dismiss into whatever app the user clicked, without grabbing
+            // focus back to where the popup was opened from.
+            self.close(reactivating: false)
+        }
+    }
+
+    private func removeGlobalClickMonitor() {
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
         }
     }
 

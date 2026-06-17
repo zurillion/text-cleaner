@@ -17,8 +17,22 @@ final class CharacterPickerController {
     private var resignObserver: NSObjectProtocol?
     private var resizeObserver: NSObjectProtocol?
     private var keyMonitor: Any?
+    private var globalClickMonitor: Any?
     private weak var previousFrontmost: NSRunningApplication?
     private var ignoreResign = false
+
+    /// Pinned: the window stays open after a pick so several glyphs can
+    /// be inserted in a row. While pinned, losing focus does nothing and
+    /// the panel yields keyboard focus to the frontmost app.
+    private var isPinned = false
+
+    /// Absolute drag references, captured on drag-begin so the math
+    /// doesn't drift as the panel moves under the cursor.
+    private var dragStartScreenLocation: NSPoint?
+    private var dragStartOrigin: NSPoint?
+    /// Once the user drags the window we stop re-centering it after a
+    /// resize — the drag is an explicit "leave it here".
+    private var hasBeenDragged = false
 
     private let defaultSize = NSSize(width: 460, height: 460)
 
@@ -47,6 +61,19 @@ final class CharacterPickerController {
             NotificationCenter.default.removeObserver(observer)
         }
         removeKeyMonitor()
+        removeGlobalClickMonitor()
+    }
+
+    /// Opens the picker, or closes it if it's already on screen. Bound to
+    /// the global hotkey so a second press dismisses — the only way to
+    /// dismiss while pinned (where outside clicks are intentionally
+    /// ignored).
+    func toggle() {
+        if panel?.isVisible == true {
+            close()
+        } else {
+            show()
+        }
     }
 
     func show() {
@@ -57,6 +84,11 @@ final class CharacterPickerController {
         model.selectedIndex = 0
         model.hoverIndex = nil
         model.query = ""
+        // Every fresh open starts unpinned, centered, key.
+        isPinned = false
+        model.isPinned = false
+        hasBeenDragged = false
+        panel.becomesKeyOnlyIfNeeded = false
         // Refresh recents from persisted settings each time the picker
         // opens — captures any picks made via earlier opens of this
         // app session and survives restarts.
@@ -69,22 +101,36 @@ final class CharacterPickerController {
         NSApp.unhideWithoutActivation()
         panel.makeKeyAndOrderFront(nil)
         installKeyMonitor()
+        installGlobalClickMonitor()
     }
 
-    func close() {
+    /// - Parameter reactivating: when true, focus returns to the app the
+    ///   picker was opened from (Esc, hotkey, commit). When the user
+    ///   dismissed by clicking *into* another app, pass false so that
+    ///   clicked app keeps focus instead of being yanked back.
+    func close(reactivating: Bool = true) {
+        guard panel?.isVisible == true else { return }
         ignoreResign = true
         removeKeyMonitor()
+        removeGlobalClickMonitor()
         panel?.orderOut(nil)
-        if let target = previousFrontmost,
-           target.bundleIdentifier != Bundle.main.bundleIdentifier {
-            if #available(macOS 14.0, *) {
-                target.activate()
-            } else {
-                target.activate(options: [.activateIgnoringOtherApps])
-            }
-        }
+        // Leave the panel ready for a clean, unpinned next open.
+        isPinned = false
+        model?.isPinned = false
+        panel?.becomesKeyOnlyIfNeeded = false
+        if reactivating { reactivatePreviousApp() }
         DispatchQueue.main.async { [weak self] in
             self?.ignoreResign = false
+        }
+    }
+
+    private func reactivatePreviousApp() {
+        guard let target = previousFrontmost,
+              target.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+        if #available(macOS 14.0, *) {
+            target.activate()
+        } else {
+            target.activate(options: [.activateIgnoringOtherApps])
         }
     }
 
@@ -103,7 +149,11 @@ final class CharacterPickerController {
             settings: AppSettings.shared,
             onSelect: { [weak self] character in
                 self?.commit(character: character)
-            }
+            },
+            onTogglePin: { [weak self] in self?.togglePin() },
+            onDragBegan: { [weak self] loc in self?.handleDragBegan(at: loc) },
+            onDragChanged: { [weak self] loc in self?.handleDragChanged(at: loc) },
+            onDragEnded: { [weak self] in self?.handleDragEnded() }
         )
 
         let panel = PickerPanel(
@@ -122,7 +172,7 @@ final class CharacterPickerController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.minSize = NSSize(width: 320, height: 260)
 
-        let hosting = NSHostingView(rootView: view)
+        let hosting = FirstMouseHostingView(rootView: view)
         hosting.translatesAutoresizingMaskIntoConstraints = false
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -148,7 +198,10 @@ final class CharacterPickerController {
             object: panel,
             queue: .main
         ) { [weak self] _ in
-            self?.recenter(animated: true)
+            // A window the user has dragged keeps its position; only an
+            // untouched, still-centered window re-centers after resize.
+            guard let self = self, !self.hasBeenDragged else { return }
+            self.recenter(animated: true)
         }
 
         self.panel = panel
@@ -157,9 +210,83 @@ final class CharacterPickerController {
     private func scheduleResignCheck() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, !self.ignoreResign else { return }
+            // Pinned windows are meant to lose focus and keep floating, so
+            // the user can type in the target app between picks.
+            if self.isPinned { return }
             let key = NSApp.keyWindow
             if key === self.panel { return }
-            self.close()
+            // A resign means the user moved to another window/app; leave
+            // focus there rather than reactivating where we opened from.
+            self.close(reactivating: false)
+        }
+    }
+
+    // MARK: - Drag
+
+    private func handleDragBegan(at screenLocation: NSPoint) {
+        dragStartScreenLocation = screenLocation
+        dragStartOrigin = panel?.frame.origin
+    }
+
+    private func handleDragChanged(at screenLocation: NSPoint) {
+        guard let start = dragStartScreenLocation,
+              let origin = dragStartOrigin else { return }
+        let dx = screenLocation.x - start.x
+        let dy = screenLocation.y - start.y
+        panel?.setFrameOrigin(NSPoint(x: origin.x + dx, y: origin.y + dy))
+    }
+
+    private func handleDragEnded() {
+        if dragStartScreenLocation != nil { hasBeenDragged = true }
+        dragStartScreenLocation = nil
+        dragStartOrigin = nil
+    }
+
+    // MARK: - Pin
+
+    private func togglePin() {
+        guard let panel = panel else { return }
+        isPinned.toggle()
+        model?.isPinned = isPinned
+        if isPinned {
+            // Hand keyboard focus back to the frontmost app so the user can
+            // keep typing there; with becomesKeyOnlyIfNeeded a glyph click
+            // won't steal it back, so the synthetic ⌘V lands in that app.
+            panel.becomesKeyOnlyIfNeeded = true
+            reactivatePreviousApp()
+        } else {
+            // Reclaim keyboard focus for arrow / search / Esc navigation.
+            panel.becomesKeyOnlyIfNeeded = false
+            panel.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    // MARK: - Click-outside monitor
+    //
+    // A non-activating floating panel doesn't reliably get a resign-key
+    // notification for every outside click (the previously-active app can
+    // stay active while our panel is merely key-in-app). A global mouse
+    // monitor sees clicks destined for other apps directly, so "click
+    // outside = dismiss" works regardless of the key-window dance. Mouse
+    // global monitors need no extra entitlement.
+
+    private func installGlobalClickMonitor() {
+        removeGlobalClickMonitor()
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            // Pinned windows survive outside clicks on purpose.
+            if self.isPinned { return }
+            // The click is landing in another app; let that app keep focus.
+            self.close(reactivating: false)
+        }
+    }
+
+    private func removeGlobalClickMonitor() {
+        if let monitor = globalClickMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalClickMonitor = nil
         }
     }
 
@@ -245,12 +372,31 @@ final class CharacterPickerController {
 
     private func commit(character: String) {
         recordPick(character)
-        // close() orders the panel out and reactivates previousFrontmost
-        // synchronously; the small delay before paste lets that handoff
-        // settle so the synthetic ⌘V lands in the target rather than
-        // our app.
-        close()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+        if isPinned {
+            commitPinned(character: character)
+        } else {
+            // close() orders the panel out and reactivates previousFrontmost
+            // synchronously; the small delay before paste lets that handoff
+            // settle so the synthetic ⌘V lands in the target rather than
+            // our app.
+            close()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                PasteSimulator.paste(attributed: NSAttributedString(string: character))
+            }
+        }
+    }
+
+    /// Pinned pick: insert without closing. The panel is a non-activating
+    /// palette, so normally it isn't key and the frontmost app receives
+    /// the ⌘V directly — meaning the glyph lands wherever the user is
+    /// currently typing, even if they've switched apps. The only time the
+    /// panel holds key focus is right after using the search field; in
+    /// that case hand focus back so the paste doesn't land in our panel.
+    private func commitPinned(character: String) {
+        if panel?.isKeyWindow == true {
+            reactivatePreviousApp()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             PasteSimulator.paste(attributed: NSAttributedString(string: character))
         }
     }
@@ -261,4 +407,12 @@ final class CharacterPickerController {
 final class PickerPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+}
+
+/// NSHostingView that delivers the first click even when its window isn't
+/// key. A pinned picker is a non-key floating palette, so without this the
+/// first glyph click would only "focus" the window and be swallowed,
+/// forcing a second click to actually insert.
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

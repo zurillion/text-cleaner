@@ -185,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 recordPick: { AppSettings.shared.recordPickedCharacter($0) }
             )
         }
-        characterPickerController?.show()
+        characterPickerController?.toggle()
     }
 
     private func showEmojiPicker() {
@@ -196,6 +196,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 recordPick: { AppSettings.shared.recordPickedEmoji($0) }
             )
         }
-        emojiPickerController?.show()
+        emojiPickerController?.toggle()
     }
 }
