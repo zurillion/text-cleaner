@@ -12,16 +12,22 @@
 #   Scripts/make-dmg.sh <path-to-.app> [notarytool-profile]
 #
 # Examples:
-#   Scripts/make-dmg.sh ~/Desktop/Export/TextCleaner.app TextMagicianNotary
+#   Scripts/make-dmg.sh ~/Desktop/Export/TextCleaner.app NotaryToolMacbookAirM2
 #   Scripts/make-dmg.sh ~/Desktop/Export/TextCleaner.app    # skips DMG notarization
+#
+# The notarytool-profile name is whatever you chose when you ran
+# `xcrun notarytool store-credentials`. Per-Mac naming (e.g.
+# NotaryToolMacbookAirM2, NotaryToolMacMini) is convenient because the
+# app-specific password isn't synced via iCloud Keychain — every Mac
+# you build from needs its own store-credentials invocation.
 #
 # One-time notarytool credential setup (needed only if you pass a
 # profile name to notarize the DMG):
 #   1. Create an app-specific password at https://appleid.apple.com
 #      (Sign-In and Security → App-Specific Passwords). notarytool
 #      can't do interactive 2FA, hence the app-specific password.
-#   2. Store it in the keychain under a profile name:
-#        xcrun notarytool store-credentials "TextMagicianNotary" \
+#   2. Store it in the keychain under a profile name (your choice):
+#        xcrun notarytool store-credentials "NotaryToolMacbookAirM2" \
 #          --apple-id "you@example.com" \
 #          --team-id "ABCDE12345" \
 #          --password "xxxx-xxxx-xxxx-xxxx"
