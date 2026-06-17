@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TextMagician — Utility da menu bar per macOS</title>
+    <meta name="description" content="Trasforma il testo della clipboard, inserisci simboli Unicode o emoji con scorciatoie globali. Per macOS 14 e superiori.">
+
+    <link rel="icon" type="image/png" sizes="512x512" href="Screenshots/icon.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="Screenshots/icon.png">
+
+    <meta property="og:title" content="TextMagician">
+    <meta property="og:description" content="Trasforma il testo della clipboard, inserisci simboli Unicode o emoji con scorciatoie globali. Per macOS.">
+    <meta property="og:image" content="Screenshots/icon.png">
+    <meta property="og:type" content="website">
+
+    <style>
+        :root {
+            --bg: #0a0b12;
+            --bg-card: #14161f;
+            --bg-card-hover: #1b1e2a;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e7e8ec;
+            --text-dim: #a1a4b1;
+            --text-faint: #6b6f7d;
+            --accent-1: #667eff;
+            --accent-2: #9e4cd5;
+            --accent-gradient: linear-gradient(135deg, #667eff 0%, #9e4cd5 100%);
+            --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.4);
+            --shadow-accent: 0 12px 40px rgba(102, 126, 255, 0.25);
+            --radius: 14px;
+            --radius-lg: 22px;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg: #fafbff;
+                --bg-card: #ffffff;
+                --bg-card-hover: #f4f6fc;
+                --border: rgba(0, 0, 0, 0.07);
+                --text: #1c1f2a;
+                --text-dim: #585b6a;
+                --text-faint: #8c8f9c;
+                --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.08);
+                --shadow-accent: 0 12px 40px rgba(102, 126, 255, 0.20);
+            }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        a { color: inherit; }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ── Hero ───────────────────────────────────────────────────── */
+
+        .hero {
+            position: relative;
+            padding: 96px 0 80px;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: "";
+            position: absolute;
+            inset: -200px 0 auto 0;
+            height: 600px;
+            background: radial-gradient(ellipse at center top,
+                rgba(102, 126, 255, 0.18) 0%,
+                transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero > * { position: relative; z-index: 1; }
+
+        .hero-icon {
+            width: 128px;
+            height: 128px;
+            border-radius: 28px;
+            box-shadow: var(--shadow-soft);
+            margin: 0 auto 28px;
+            display: block;
+            background: var(--accent-gradient);
+        }
+
+        .hero-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 28px;
+            display: block;
+        }
+
+        .hero h1 {
+            font-size: clamp(48px, 6vw, 76px);
+            line-height: 1.05;
+            margin: 0 0 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        .hero .tagline {
+            font-size: clamp(18px, 2vw, 22px);
+            color: var(--text-dim);
+            margin: 0 auto 40px;
+            max-width: 640px;
+        }
+
+        .cta-group {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--accent-gradient);
+            color: #fff;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 999px;
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            box-shadow: var(--shadow-accent);
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 48px rgba(102, 126, 255, 0.35);
+        }
+
+        .cta svg { width: 18px; height: 18px; }
+
+        .cta-meta {
+            font-size: 13px;
+            color: var(--text-faint);
+        }
+
+        /* ── Sections ─────────────────────────────────────────────── */
+
+        section { padding: 64px 0; }
+
+        .section-title {
+            font-size: clamp(28px, 3vw, 38px);
+            margin: 0 0 12px;
+            letter-spacing: -0.02em;
+            font-weight: 700;
+        }
+
+        .section-lead {
+            font-size: 17px;
+            color: var(--text-dim);
+            margin: 0 0 48px;
+            max-width: 680px;
+        }
+
+        /* ── Tools grid ───────────────────────────────────────────── */
+
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .tool {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .tool:hover {
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        .tool-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(102, 126, 255, 0.12);
+            color: var(--accent-1);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            margin-bottom: 16px;
+        }
+
+        .tool h3 {
+            font-size: 20px;
+            margin: 0 0 10px;
+            letter-spacing: -0.01em;
+        }
+
+        .tool p {
+            margin: 0;
+            font-size: 15px;
+            color: var(--text-dim);
+        }
+
+        /* ── Screenshots ─────────────────────────────────────────── */
+
+        .shots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .shot {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .shot img {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: var(--bg);
+        }
+
+        .shot-caption {
+            padding: 16px 20px;
+            font-size: 14px;
+            color: var(--text-dim);
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Features list ───────────────────────────────────────── */
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 32px 40px;
+        }
+
+        .feature h4 {
+            margin: 0 0 8px;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+        }
+
+        .feature p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 1px 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 0.85em;
+            color: var(--text);
+        }
+
+        @media (prefers-color-scheme: light) {
+            kbd { background: rgba(0, 0, 0, 0.05); }
+        }
+
+        /* ── Requirements / install ───────────────────────────────── */
+
+        .install {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        @media (max-width: 720px) {
+            .install { grid-template-columns: 1fr; }
+        }
+
+        .install h3 {
+            margin: 0 0 12px;
+            font-size: 22px;
+            letter-spacing: -0.01em;
+        }
+
+        .install p {
+            margin: 0 0 16px;
+            color: var(--text-dim);
+            font-size: 15px;
+        }
+
+        .install ol {
+            margin: 0;
+            padding-left: 22px;
+            color: var(--text-dim);
+            font-size: 15px;
+        }
+
+        .install ol li { margin: 4px 0; }
+
+        /* ── Footer ───────────────────────────────────────────────── */
+
+        footer {
+            padding: 56px 0 80px;
+            border-top: 1px solid var(--border);
+            color: var(--text-faint);
+            font-size: 14px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            align-items: center;
+        }
+
+        @media (max-width: 720px) {
+            .footer-grid { grid-template-columns: 1fr; text-align: center; }
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 720px) {
+            .footer-links { justify-content: center; }
+        }
+
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .footer-links a:hover { color: var(--accent-1); }
+    </style>
+</head>
+<body>
+
+    <main>
+        <!-- ──────── Hero ──────── -->
+        <header class="hero">
+            <div class="wrap">
+                <div class="hero-icon">
+                    <img src="Screenshots/icon.png" alt="Icona TextMagician" width="128" height="128">
+                </div>
+                <h1>TextMagician</h1>
+                <p class="tagline">
+                    Una piccola utility per macOS che vive nella barra dei menu. Trasforma il
+                    testo nella clipboard, inserisci simboli Unicode o emoji — tutto da
+                    scorciatoie globali, in qualunque app tu stia usando.
+                </p>
+                <div class="cta-group">
+                    <a class="cta" href="https://github.com/zurillion/text-cleaner/releases/latest/download/TextMagician.dmg">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 3v12"></path>
+                            <path d="m7 10 5 5 5-5"></path>
+                            <path d="M5 21h14"></path>
+                        </svg>
+                        Scarica per macOS
+                    </a>
+                    <span class="cta-meta">DMG · richiede macOS 14 (Sonoma) o superiore</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ──────── Tools ──────── -->
+        <section id="tools">
+            <div class="wrap">
+                <h2 class="section-title">Tre strumenti, una sola app</h2>
+                <p class="section-lead">
+                    Ogni strumento ha una sua scorciatoia globale. Premila in qualsiasi app: il
+                    risultato che scegli viene incollato dove ti trovavi.
+                </p>
+
+                <div class="tools">
+                    <article class="tool">
+                        <div class="tool-badge">⌃⌥⌘V</div>
+                        <h3>Trasformatore della clipboard</h3>
+                        <p>
+                            Pulizia URL (toglie i tracker, ricostruisce link Facebook),
+                            cambio case (camelCase, snake_case, UPPERCASE…), 25+ stili
+                            "font" Unicode per Twitter e Facebook (𝐛𝐨𝐥𝐝, 𝘪𝘵𝘢𝘭𝘪𝘤,
+                            𝔣𝔯𝔞𝔨𝔱𝔲𝔯, ʇ́ǝ pᴉs∩, …), e i trucchi per i ritorni
+                            a capo sui social.
+                        </p>
+                    </article>
+
+                    <article class="tool">
+                        <div class="tool-badge">⌃⌥⌘U</div>
+                        <h3>Selettore Unicode</h3>
+                        <p>
+                            Un catalogo curato di simboli per matematica, logica, frecce,
+                            musica, alfabeti decorativi. Cerca per nome ("alpha" trova
+                            α, "treble" trova 𝄞), ricorda gli ultimi 15 che hai usato,
+                            e si ridimensiona come vuoi.
+                        </p>
+                    </article>
+
+                    <article class="tool">
+                        <div class="tool-badge">⌃⌥⌘E</div>
+                        <h3>Selettore Emoji</h3>
+                        <p>
+                            Stessa interfaccia del selettore Unicode, per gli emoji.
+                            Cerca per nome o per categoria, niente clic in catene di
+                            menu. I tuoi emoji preferiti tornano sempre in cima.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──────── Screenshots ──────── -->
+        <section id="screenshots" style="padding-top: 0;">
+            <div class="wrap">
+                <div class="shots">
+                    <figure class="shot" style="margin: 0;">
+                        <img src="Screenshots/popup.png" alt="La popup del trasformatore">
+                        <figcaption class="shot-caption">Popup del trasformatore — un'azione per riga.</figcaption>
+                    </figure>
+                    <figure class="shot" style="margin: 0;">
+                        <img src="Screenshots/picker.png" alt="Il selettore di simboli Unicode">
+                        <figcaption class="shot-caption">Selettore Unicode — categorie, ricerca, recenti.</figcaption>
+                    </figure>
+                    <figure class="shot" style="margin: 0;">
+                        <img src="Screenshots/emoji.png" alt="Il selettore di emoji">
+                        <figcaption class="shot-caption">Selettore Emoji — stessa interfaccia, contenuti diversi.</figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──────── Features ──────── -->
+        <section id="features">
+            <div class="wrap">
+                <h2 class="section-title">Comodità da menu bar</h2>
+                <p class="section-lead">
+                    TextMagician sta in fondo nella barra dei menu, parte all'avvio se vuoi e si
+                    fa dimenticare. Quando ti serve, sai dove premere.
+                </p>
+
+                <div class="features">
+                    <div class="feature">
+                        <h4>Tutto via tastiera</h4>
+                        <p>Frecce per navigare, <kbd>↩</kbd> per confermare, <kbd>⎋</kbd> per uscire. Le prime 9 azioni hanno scorciatoie numeriche, le altre la corrispondente lettera dell'alfabeto.</p>
+                    </div>
+                    <div class="feature">
+                        <h4>Anteprima ed edit</h4>
+                        <p><kbd>␣</kbd> mostra cosa produrrà l'azione selezionata. <kbd>⇥</kbd> apre l'anteprima come editor: puoi ritoccare il risultato (anche grassetto/corsivo) prima di incollarlo.</p>
+                    </div>
+                    <div class="feature">
+                        <h4>Configurabile</h4>
+                        <p>Riordina le azioni come ti pare con drag-and-drop, attiva solo quelle che usi, inserisci separatori dove ti aiutano a non confonderti. Le scorciatoie globali sono ridefinibili.</p>
+                    </div>
+                    <div class="feature">
+                        <h4>Otto temi</h4>
+                        <p>Light, Dark, Solarized (light e dark), Nord, Dracula, High Contrast, oppure segue il tema di sistema. Funzionano su tutte e tre le finestre.</p>
+                    </div>
+                    <div class="feature">
+                        <h4>Locale</h4>
+                        <p>Nessuna richiesta di rete. Mai. La clipboard viene letta solo quando invochi la popup. I "recenti" sono salvati nelle preferenze locali e non sincronizzati da nessuna parte.</p>
+                    </div>
+                    <div class="feature">
+                        <h4>Pulisce dopo se stessa</h4>
+                        <p>Quando l'app simula <kbd>⌘V</kbd> sull'app di destinazione, ripristina dopo un istante il contenuto originale della clipboard. Quello che avevi copiato resta dove l'avevi messo.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ──────── Install ──────── -->
+        <section id="install">
+            <div class="wrap">
+                <div class="install">
+                    <div>
+                        <h3>Installazione</h3>
+                        <p>
+                            Tre passaggi, una volta sola. Al primo lancio macOS chiede il permesso
+                            Accessibilità — serve per simulare il <kbd>⌘V</kbd> all'app
+                            di destinazione.
+                        </p>
+                        <a class="cta" href="https://github.com/zurillion/text-cleaner/releases/latest/download/TextMagician.dmg" style="margin-top: 8px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M12 3v12"></path>
+                                <path d="m7 10 5 5 5-5"></path>
+                                <path d="M5 21h14"></path>
+                            </svg>
+                            Scarica il DMG
+                        </a>
+                    </div>
+                    <div>
+                        <ol>
+                            <li>Apri il DMG, trascina TextMagician dentro la cartella <em>Applicazioni</em>.</li>
+                            <li>Lancia l'app dalla cartella Applicazioni. macOS chiede il permesso Accessibilità: aprilo in Impostazioni → Privacy e Sicurezza → Accessibilità e attiva l'interruttore.</li>
+                            <li>Esci dall'app (icona nella barra dei menu → Quit) e rilanciala. Da qui in poi premi <kbd>⌃⌥⌘V</kbd> da qualunque app per cominciare.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="wrap footer-grid">
+            <div>
+                TextMagician · per macOS 14+ · firmata Developer ID e notarizzata da Apple
+            </div>
+            <nav class="footer-links">
+                <a href="https://github.com/zurillion/text-cleaner/blob/main/USAGE.it.md">Guida</a>
+                <a href="https://github.com/zurillion/text-cleaner/blob/main/USAGE.md">User Guide (EN)</a>
+                <a href="https://github.com/zurillion/text-cleaner/releases">Versioni</a>
+                <a href="https://github.com/zurillion/text-cleaner">Codice sorgente</a>
+            </nav>
+        </div>
+    </footer>
+
+</body>
+</html>

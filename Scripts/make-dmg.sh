@@ -187,4 +187,17 @@ else
     echo "  (The .app inside is still notarized/stapled from Xcode.)"
 fi
 
-echo "✓ Done: $DMG_PATH"
+# Also drop a copy with no version in the filename. That's the file you
+# upload to each GitHub Release: the project page's download button
+# points at .../releases/latest/download/TextMagician.dmg, and the URL
+# only redirects when an asset with that exact filename exists. The
+# versioned copy stays on disk too for archival reference.
+RELEASE_NAME="${VOLUME_NAME}.dmg"
+RELEASE_PATH="$OUT_DIR/$RELEASE_NAME"
+if [[ "$DMG_PATH" != "$RELEASE_PATH" ]]; then
+    cp "$DMG_PATH" "$RELEASE_PATH"
+    echo "✓ Done: $DMG_PATH"
+    echo "        $RELEASE_PATH  (upload this to GitHub Releases)"
+else
+    echo "✓ Done: $DMG_PATH"
+fi

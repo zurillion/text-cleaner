@@ -43,3 +43,6 @@ USAGE.it.pdf
 # rebuildable; never commit them.
 TextCleaner/*/*.app
 TextCleaner/**/Export*
+
+# Built DMGs are distributed via GitHub Releases, not via git.
+*.dmg
