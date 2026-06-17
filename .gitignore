@@ -37,3 +37,9 @@ TextCleaner/AppIcon.icns
 # will pick up if present.
 USAGE.pdf
 USAGE.it.pdf
+
+# Xcode "Distribute App" exports usually land here when the user picks
+# a folder inside the repo. The exported .app bundles are large and
+# rebuildable; never commit them.
+TextCleaner/*/*.app
+TextCleaner/**/Export*
