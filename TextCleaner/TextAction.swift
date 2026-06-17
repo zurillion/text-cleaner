@@ -52,15 +52,31 @@ enum TextActionKind: String, CaseIterable, Codable {
 struct TextAction: Identifiable, Hashable {
     let kind: TextActionKind
     let title: String
+    /// Canonical SF Symbol name. May be a glyph introduced after our
+    /// minimum OS; use `displayIcon` when actually rendering so older
+    /// systems get a substitute instead of a blank.
     let icon: String
 
     var id: TextActionKind { kind }
 
+    /// SF Symbol that actually renders on the host OS. `characters.uppercase`
+    /// / `characters.lowercase` are SF Symbols 4 (macOS 13) and show blank
+    /// on Monterey, so substitute an older equivalent there. macOS 13+ keeps
+    /// the canonical glyph.
+    var displayIcon: String {
+        if #available(macOS 13, *) { return icon }
+        switch icon {
+        case "characters.uppercase": return "textformat.abc"
+        case "characters.lowercase": return "textformat.abc.dottedunderline"
+        default: return icon
+        }
+    }
+
     static let all: [TextAction] = [
         TextAction(kind: .unvaried,         title: "Unvaried",         icon: "equal"),
         TextAction(kind: .removeFormatting, title: "Remove formatting", icon: "textformat"),
-        TextAction(kind: .uppercase,        title: "UPPERCASE",        icon: "textformat.abc"),
-        TextAction(kind: .lowercase,        title: "lowercase",        icon: "textformat.abc.dottedunderline"),
+        TextAction(kind: .uppercase,        title: "UPPERCASE",        icon: "characters.uppercase"),
+        TextAction(kind: .lowercase,        title: "lowercase",        icon: "characters.lowercase"),
         TextAction(kind: .camelCase,        title: "camelCase",        icon: "text.append"),
         TextAction(kind: .snakeCase,        title: "snake_case",       icon: "minus.forwardslash.plus"),
         TextAction(kind: .cleanURL,         title: "Clean URL",        icon: "link"),

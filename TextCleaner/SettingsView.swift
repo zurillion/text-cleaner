@@ -100,7 +100,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .onChange(of: shortcut) { newValue in
+        .onChangeCompat(of: shortcut) { newValue in
             HotKeySettings.current = newValue
         }
     }
@@ -201,7 +201,7 @@ struct SettingsView: View {
                         .fill(Color.primary.opacity(pref.enabled ? 0.08 : 0.04))
                 )
                 .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
-            Image(systemName: action?.icon ?? "questionmark")
+            Image(systemName: action?.displayIcon ?? "questionmark")
                 .frame(width: 18)
                 .foregroundStyle(pref.enabled ? Color.secondary : Color.secondary.opacity(0.5))
             Text(action?.title ?? pref.kind.rawValue)
@@ -214,12 +214,20 @@ struct SettingsView: View {
         }
     }
 
+    /// `line.3.horizontal` is the canonical SF Symbols 4 (macOS 13) name;
+    /// on Monterey it renders blank, so use the original `line.horizontal.3`
+    /// there. macOS 13+ keeps the canonical glyph.
+    private var dragHandleSymbol: String {
+        if #available(macOS 13, *) {
+            return "line.3.horizontal"
+        } else {
+            return "line.horizontal.3"
+        }
+    }
+
     @ViewBuilder
     private func dragHandle(pref: ActionPreference, action: TextAction?) -> some View {
-        // `line.horizontal.3` (SF Symbols 1, macOS 11+) rather than the
-        // macOS-13 rename `line.3.horizontal`, which renders blank on
-        // Monterey. The old name still resolves as an alias on 13+.
-        let icon = Image(systemName: "line.horizontal.3")
+        let icon = Image(systemName: dragHandleSymbol)
             .font(.system(size: 11, weight: .semibold))
             .frame(width: 16, height: 18)
             .contentShape(Rectangle())
@@ -250,7 +258,7 @@ struct SettingsView: View {
 
     private func dragPreview(pref: ActionPreference, action: TextAction?) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: action?.icon ?? "questionmark")
+            Image(systemName: action?.displayIcon ?? "questionmark")
             Text(action?.title ?? pref.kind.rawValue)
         }
         .padding(.horizontal, 10)
@@ -383,11 +391,36 @@ private struct DropStripView: View {
                 // is ignored so it doesn't interfere with row dragging.
                 if NSEvent.modifierFlags.contains(.option) { onOptionClick() }
             }
-            // `.dropDestination` is macOS 13+; `.onDrop` (macOS 11+) is the
-            // portable equivalent. The payload arrives as an NSItemProvider
-            // whose text representation we load asynchronously, then hop to
-            // the main actor to mutate the model.
-            .onDrop(of: [.text], isTargeted: $isTargeted) { providers in
+            .modifier(ReorderDropTarget(
+                isValid: isValid,
+                isTargeted: $isTargeted,
+                onDrop: onDrop
+            ))
+    }
+}
+
+/// Drop target for the reorder strip. Prefers `.dropDestination`
+/// (Transferable, macOS 13+) and falls back to `.onDrop` (macOS 11+) on
+/// Monterey, so modern systems use the current API while macOS 12 still
+/// works. Both decode the same plain-text payload (a `TextActionKind`
+/// rawValue) and report hover via the shared `isTargeted` binding.
+private struct ReorderDropTarget: ViewModifier {
+    let isValid: Bool
+    @Binding var isTargeted: Bool
+    let onDrop: (String) -> Void
+
+    func body(content: Content) -> some View {
+        if #available(macOS 13, *) {
+            content.dropDestination(for: String.self) { items, _ in
+                guard isValid, let raw = items.first else { return false }
+                onDrop(raw)
+                return true
+            } isTargeted: { isTargeted = $0 }
+        } else {
+            // The payload arrives as an NSItemProvider whose text
+            // representation we load asynchronously, then hop to the main
+            // queue to mutate the model.
+            content.onDrop(of: [.text], isTargeted: $isTargeted) { providers in
                 guard isValid, let provider = providers.first else { return false }
                 _ = provider.loadObject(ofClass: String.self) { raw, _ in
                     guard let raw else { return }
@@ -395,6 +428,7 @@ private struct DropStripView: View {
                 }
                 return true
             }
+        }
     }
 }
 

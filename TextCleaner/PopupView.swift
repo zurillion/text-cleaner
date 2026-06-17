@@ -133,7 +133,7 @@ struct PopupView: View {
                 }
                 .frame(maxHeight: 360)
                 .modifier(AutomaticScrollIndicatorsIfAvailable())
-                .onChange(of: model.selectedIndex) { newValue in
+                .onChangeCompat(of: model.selectedIndex) { newValue in
                     // Only follow keyboard navigation. Hover-driven
                     // selection must not scroll, or the list chases the
                     // cursor (the hovered row is already on screen).
@@ -213,7 +213,7 @@ struct PopupView: View {
                 )
                 .foregroundStyle(isSelected ? theme.onAccent : theme.secondaryForeground)
 
-            Image(systemName: action.icon)
+            Image(systemName: action.displayIcon)
                 .frame(width: 16)
                 .foregroundStyle(isSelected ? theme.onAccent : theme.foreground)
 
@@ -276,6 +276,30 @@ private struct AutomaticScrollIndicatorsIfAvailable: ViewModifier {
             content.scrollIndicators(.automatic)
         } else {
             content
+        }
+    }
+}
+
+extension View {
+    /// Version-tolerant `onChange`. Uses the current two-parameter API on
+    /// macOS 14+ (where the single-parameter `onChange(of:perform:)` is
+    /// deprecated) and the original single-parameter form on macOS 12–13.
+    /// Modern systems stay on the non-deprecated path, so if a future
+    /// macOS ever drops the old API it only affects the branch those
+    /// systems never execute.
+    @ViewBuilder
+    func onChangeCompat<V: Equatable>(
+        of value: V,
+        perform action: @escaping (V) -> Void
+    ) -> some View {
+        if #available(macOS 14, *) {
+            onChange(of: value) { _, newValue in action(newValue) }
+        } else {
+            // Reached only on macOS 12–13. The single-parameter overload is
+            // deprecated as of macOS 14 (hence the gate above); the one
+            // deprecation warning this line emits is the cost of the
+            // back-deployment and is intentional.
+            onChange(of: value, perform: action)
         }
     }
 }
