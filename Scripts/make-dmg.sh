@@ -104,9 +104,67 @@ hdiutil create \
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
     echo "› Submitting DMG for notarization (profile: $NOTARY_PROFILE)…"
-    xcrun notarytool submit "$DMG_PATH" \
-        --keychain-profile "$NOTARY_PROFILE" \
-        --wait
+    echo "  Notarization usually takes 1–5 minutes (occasionally up to 15+"
+    echo "  if Apple's queue is busy). Heartbeat every 15s below."
+
+    START_TS="$(date +%s)"
+
+    # Submit without --wait so we can poll the status ourselves and
+    # show a visible heartbeat. notarytool's own --wait stays mute
+    # for the entire processing window, which feels like a hang.
+    SUBMIT_OUT="$(xcrun notarytool submit "$DMG_PATH" \
+        --keychain-profile "$NOTARY_PROFILE" 2>&1)" || {
+        echo "$SUBMIT_OUT" >&2
+        echo "error: notarytool submit failed" >&2
+        exit 1
+    }
+
+    SUBMISSION_ID="$(printf '%s\n' "$SUBMIT_OUT" \
+        | sed -nE 's/^[[:space:]]+id:[[:space:]]+(.+)$/\1/p' \
+        | head -1)"
+    if [[ -z "$SUBMISSION_ID" ]]; then
+        echo "error: couldn't parse submission ID from notarytool output:" >&2
+        printf '%s\n' "$SUBMIT_OUT" >&2
+        exit 1
+    fi
+    echo "  submission id: $SUBMISSION_ID"
+
+    while true; do
+        elapsed=$(( $(date +%s) - START_TS ))
+        printf -v elapsed_fmt "%02d:%02d" $(( elapsed / 60 )) $(( elapsed % 60 ))
+
+        INFO_OUT="$(xcrun notarytool info "$SUBMISSION_ID" \
+            --keychain-profile "$NOTARY_PROFILE" 2>&1)" || {
+            echo "  [$elapsed_fmt] status check failed — retrying in 15s" >&2
+            sleep 15
+            continue
+        }
+
+        STATUS="$(printf '%s\n' "$INFO_OUT" \
+            | sed -nE 's/^[[:space:]]+status:[[:space:]]+(.+)$/\1/p' \
+            | head -1)"
+        STATUS="${STATUS:-Unknown}"
+
+        printf "  [%s] status: %s\n" "$elapsed_fmt" "$STATUS"
+
+        case "$STATUS" in
+            Accepted)
+                break
+                ;;
+            "In Progress")
+                sleep 15
+                ;;
+            *)
+                # Invalid / Rejected / unexpected — dump the log so the
+                # user can see what Apple objected to.
+                echo "error: notarization ended with status \"$STATUS\"." >&2
+                echo "       Fetching the full log from Apple…" >&2
+                xcrun notarytool log "$SUBMISSION_ID" \
+                    --keychain-profile "$NOTARY_PROFILE" >&2 || true
+                exit 1
+                ;;
+        esac
+    done
 
     echo "› Stapling notarization ticket to the DMG…"
     xcrun stapler staple "$DMG_PATH"
