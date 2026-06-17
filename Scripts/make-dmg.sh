@@ -71,6 +71,22 @@ trap 'rm -rf "$STAGING"' EXIT
 cp -R "$APP_PATH" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
+# Include the user guide if it lives at the repo root. Looks for a PDF
+# first (nicer for end users), falls back to the Markdown source so the
+# DMG always carries some kind of documentation when it's available.
+# Inside the DMG it shows up as "User Guide.<ext>" rather than the
+# repo-style "USAGE.<ext>" filename.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+for candidate in "$REPO_ROOT/USAGE.pdf" "$REPO_ROOT/USAGE.md"; do
+    if [[ -f "$candidate" ]]; then
+        ext="${candidate##*.}"
+        cp "$candidate" "$STAGING/User Guide.$ext"
+        echo "  including: $(basename "$candidate") → User Guide.$ext"
+        break
+    fi
+done
+
 echo "› Creating $DMG_NAME…"
 rm -f "$DMG_PATH"
 hdiutil create \
