@@ -54,18 +54,21 @@ button — no edits to `index.html` needed.
 
 ## Screenshots
 
-The page references files under `Screenshots/` at the repo root. The
-filenames are URL-encoded in the HTML so spaces in the basenames
+The page references files under `docs/Screenshots/` — the screenshots
+live *inside* the GitHub Pages source folder on purpose. When Pages is
+set to "Build from /docs", anything outside docs/ isn't served, so
+screenshots stored at the repo root would 404 on the live site.
+Filenames are URL-encoded in the HTML so the spaces in basenames
 ("Unicode Chars") are not a problem.
 
-| File                                | Where it shows                       |
-| ----------------------------------- | ------------------------------------ |
-| `Screenshots/icon.svg`              | Hero icon + favicon + Open Graph     |
-| `Screenshots/1. Transformations.png`| Popup screenshot (clipboard tool)    |
-| `Screenshots/2. Unicode Chars.png`  | Unicode picker screenshot            |
-| `Screenshots/3. Emojis.png`         | Emoji picker screenshot              |
-| `Screenshots/4. Preferences 1.png`  | Preferences — general / shortcuts    |
-| `Screenshots/5. Preferences 2.png`  | Preferences — actions list           |
+| File                                     | Where it shows                       |
+| ---------------------------------------- | ------------------------------------ |
+| `docs/Screenshots/icon.svg`              | Hero icon + favicon + Open Graph     |
+| `docs/Screenshots/1. Transformations.png`| Popup screenshot (clipboard tool)    |
+| `docs/Screenshots/2. Unicode Chars.png`  | Unicode picker screenshot            |
+| `docs/Screenshots/3. Emojis.png`         | Emoji picker screenshot              |
+| `docs/Screenshots/4. Preferences 1.png`  | Preferences — general / shortcuts    |
+| `docs/Screenshots/5. Preferences 2.png`  | Preferences — actions list           |
 
 `icon.svg` is a vector recreation of the app icon (same blue→purple
 gradient, same rounded-square mask, same wand-and-sparkles shape).
