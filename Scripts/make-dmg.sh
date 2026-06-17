@@ -87,7 +87,7 @@ for candidate in "$REPO_ROOT/USAGE.pdf" "$REPO_ROOT/USAGE.md"; do
     fi
 done
 
-echo "› Creating $DMG_NAME…"
+echo "› Creating ${DMG_NAME}…"
 rm -f "$DMG_PATH"
 hdiutil create \
     -volname "$VOLUME_NAME" \
