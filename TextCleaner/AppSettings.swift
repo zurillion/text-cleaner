@@ -152,11 +152,21 @@ final class AppSettings: ObservableObject {
     /// Mirrors `SMAppService.mainApp.status`. We don't persist this to
     /// UserDefaults because the system already tracks the registration
     /// — the source of truth is SMAppService itself, queried at init.
+    /// Always `false` on macOS < 13 (SMAppService didn't exist before
+    /// Ventura); the toggle is hidden in that case, see
+    /// `Self.supportsLaunchAtLogin`.
     @Published var launchAtLogin: Bool {
         didSet {
             guard launchAtLogin != oldValue, !suppressLaunchAtLoginSync else { return }
             applyLaunchAtLogin(newValue: launchAtLogin, previous: oldValue)
         }
+    }
+
+    /// Whether the host OS supports SMAppService-based launch at login.
+    /// The Settings view uses this to hide the toggle on Monterey, where
+    /// the API simply isn't available.
+    static var supportsLaunchAtLogin: Bool {
+        if #available(macOS 13, *) { return true } else { return false }
     }
 
     private var suppressLaunchAtLoginSync = false
@@ -244,14 +254,19 @@ final class AppSettings: ObservableObject {
             self.separatorAfterKinds = Self.defaultSeparatorAfterKinds
         }
 
-        self.launchAtLogin = SMAppService.mainApp.status == .enabled
+        if #available(macOS 13, *) {
+            self.launchAtLogin = SMAppService.mainApp.status == .enabled
+        } else {
+            self.launchAtLogin = false
+        }
     }
 
     /// Refreshes `launchAtLogin` from the system. Call this when the
     /// Settings window comes to the front so the toggle reflects any
     /// changes the user made in System Settings → Login Items while
-    /// the app was running.
+    /// the app was running. No-op on macOS < 13.
     func refreshLaunchAtLogin() {
+        guard #available(macOS 13, *) else { return }
         let actual = SMAppService.mainApp.status == .enabled
         if actual != launchAtLogin {
             suppressLaunchAtLoginSync = true
@@ -261,6 +276,7 @@ final class AppSettings: ObservableObject {
     }
 
     private func applyLaunchAtLogin(newValue: Bool, previous: Bool) {
+        guard #available(macOS 13, *) else { return }
         let service = SMAppService.mainApp
         do {
             if newValue {

@@ -282,7 +282,7 @@ struct CharacterPickerView: View {
                         .padding(.vertical, 12)
                     }
                 }
-                .onChange(of: model.selectedIndex) { _, _ in
+                .onChange(of: model.selectedIndex) { _ in
                     guard let entry = model.selectedEntry else { return }
                     withAnimation(.easeOut(duration: 0.12)) {
                         proxy.scrollTo(entry.id, anchor: .center)
@@ -290,7 +290,7 @@ struct CharacterPickerView: View {
                 }
             }
             .onAppear { model.columns = cols }
-            .onChange(of: cols) { _, new in model.columns = new }
+            .onChange(of: cols) { new in model.columns = new }
         }
     }
 

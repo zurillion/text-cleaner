@@ -132,8 +132,8 @@ struct PopupView: View {
                     }
                 }
                 .frame(maxHeight: 360)
-                .scrollIndicators(.automatic)
-                .onChange(of: model.selectedIndex) { _, newValue in
+                .modifier(AutomaticScrollIndicatorsIfAvailable())
+                .onChange(of: model.selectedIndex) { newValue in
                     // Only follow keyboard navigation. Hover-driven
                     // selection must not scroll, or the list chases the
                     // cursor (the hovered row is already on screen).
@@ -262,5 +262,20 @@ struct PopupView: View {
                 .font(.system(size: 10))
         }
         .foregroundStyle(theme.secondaryForeground)
+    }
+}
+
+/// Applies `.scrollIndicators(.automatic)` on macOS 13+ and is a no-op
+/// on earlier systems (where `scrollIndicators` doesn't exist). The
+/// default ScrollView behavior on macOS 12 already matches `.automatic`
+/// — indicators appear during interaction and fade out — so dropping
+/// the modifier on Monterey doesn't change the visible result.
+private struct AutomaticScrollIndicatorsIfAvailable: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 13, *) {
+            content.scrollIndicators(.automatic)
+        } else {
+            content
+        }
     }
 }

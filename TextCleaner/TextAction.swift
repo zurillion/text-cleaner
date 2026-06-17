@@ -59,8 +59,8 @@ struct TextAction: Identifiable, Hashable {
     static let all: [TextAction] = [
         TextAction(kind: .unvaried,         title: "Unvaried",         icon: "equal"),
         TextAction(kind: .removeFormatting, title: "Remove formatting", icon: "textformat"),
-        TextAction(kind: .uppercase,        title: "UPPERCASE",        icon: "characters.uppercase"),
-        TextAction(kind: .lowercase,        title: "lowercase",        icon: "characters.lowercase"),
+        TextAction(kind: .uppercase,        title: "UPPERCASE",        icon: "textformat.abc"),
+        TextAction(kind: .lowercase,        title: "lowercase",        icon: "textformat.abc.dottedunderline"),
         TextAction(kind: .camelCase,        title: "camelCase",        icon: "text.append"),
         TextAction(kind: .snakeCase,        title: "snake_case",       icon: "minus.forwardslash.plus"),
         TextAction(kind: .cleanURL,         title: "Clean URL",        icon: "link"),

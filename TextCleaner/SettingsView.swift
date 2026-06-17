@@ -27,17 +27,19 @@ struct SettingsView: View {
 
     private var generalSection: some View {
         section(title: "General") {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Launch at login")
-                    Text("Start TextMagician automatically after you log in to macOS.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            if AppSettings.supportsLaunchAtLogin {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Launch at login")
+                        Text("Start TextMagician automatically after you log in to macOS.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $settings.launchAtLogin)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
                 }
-                Spacer()
-                Toggle("", isOn: $settings.launchAtLogin)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
             }
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -97,7 +99,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .onChange(of: shortcut) { _, newValue in
+        .onChange(of: shortcut) { newValue in
             HotKeySettings.current = newValue
         }
     }
