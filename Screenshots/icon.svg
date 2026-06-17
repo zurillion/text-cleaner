@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="TextMagician">
+    <defs>
+        <linearGradient id="bg" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#6673F2"/>
+            <stop offset="100%" stop-color="#9E4DD9"/>
+        </linearGradient>
+        <linearGradient id="topHighlight" x1="0%" y1="0%" x2="0%" y2="60%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+        <clipPath id="iconMask">
+            <rect width="1024" height="1024" rx="230" ry="230"/>
+        </clipPath>
+    </defs>
+
+    <g clip-path="url(#iconMask)">
+        <rect width="1024" height="1024" fill="url(#bg)"/>
+        <rect width="1024" height="1024" fill="url(#topHighlight)"/>
+
+        <g fill="#ffffff">
+            <!-- Wand: diagonal stick from upper-right to lower-left -->
+            <g transform="rotate(-45 512 512)">
+                <rect x="200" y="496" width="544" height="32" rx="16"/>
+            </g>
+
+            <!-- Big four-point sparkle at the wand's tip (upper-right) -->
+            <path d="M 710 220
+                     Q 738 308 826 336
+                     Q 738 364 710 452
+                     Q 682 364 594 336
+                     Q 682 308 710 220 Z"/>
+
+            <!-- Mid sparkle, lower-right of the wand -->
+            <path d="M 818 600
+                     Q 834 644 878 660
+                     Q 834 676 818 720
+                     Q 802 676 758 660
+                     Q 802 644 818 600 Z"/>
+
+            <!-- Small sparkle, upper-left -->
+            <path d="M 280 360
+                     Q 292 394 326 406
+                     Q 292 418 280 452
+                     Q 268 418 234 406
+                     Q 268 394 280 360 Z"/>
+        </g>
+    </g>
+</svg>

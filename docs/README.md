@@ -54,16 +54,20 @@ button — no edits to `index.html` needed.
 
 ## Screenshots
 
-The page references four images under `Screenshots/`:
+The page references files under `Screenshots/` at the repo root. The
+filenames are URL-encoded in the HTML so spaces in the basenames
+("Unicode Chars") are not a problem.
 
-| File                       | Purpose                              | Suggested size           |
-| -------------------------- | ------------------------------------ | ------------------------ |
-| `Screenshots/icon.png`     | Hero icon + favicon + Open Graph     | 512×512 PNG, transparent |
-| `Screenshots/popup.png`    | Clipboard transformer popup          | ~720×900, PNG/JPG        |
-| `Screenshots/picker.png`   | Unicode picker window                | ~720×900, PNG/JPG        |
-| `Screenshots/emoji.png`    | Emoji picker window                  | ~720×900, PNG/JPG        |
+| File                                | Where it shows                       |
+| ----------------------------------- | ------------------------------------ |
+| `Screenshots/icon.svg`              | Hero icon + favicon + Open Graph     |
+| `Screenshots/1. Transformations.png`| Popup screenshot (clipboard tool)    |
+| `Screenshots/2. Unicode Chars.png`  | Unicode picker screenshot            |
+| `Screenshots/3. Emojis.png`         | Emoji picker screenshot              |
+| `Screenshots/4. Preferences 1.png`  | Preferences — general / shortcuts    |
+| `Screenshots/5. Preferences 2.png`  | Preferences — actions list           |
 
-The page works without them (broken-image icons appear in the slots),
-but it's the kind of thing visitors notice. Drop the four files in
-`Screenshots/` at the repo root, commit, push, and the live page picks
-them up.
+`icon.svg` is a vector recreation of the app icon (same blue→purple
+gradient, same rounded-square mask, same wand-and-sparkles shape).
+Generated from `TextCleaner/AppIcon.swift`'s parameters, scales
+losslessly to any size, no external image file needed.
