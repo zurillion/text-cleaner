@@ -393,24 +393,34 @@ final class CharacterPickerController {
 
     /// Pinned pick: insert without closing. The synthetic ⌘V follows
     /// keyboard focus, so two things must be true at paste time: our app
-    /// is not frontmost (otherwise we receive the keystroke ourselves),
-    /// and our own panel has no firstResponder (otherwise even an
-    /// in-process delivery — e.g. via the search field having grabbed
-    /// focus when the user clicked it earlier — would consume the V).
+    /// is not frontmost (otherwise the V arrives at our own key window,
+    /// hits no responder and AppKit beeps), and our own panel has no
+    /// firstResponder (otherwise even an in-process delivery — e.g. via
+    /// the search field having grabbed focus when the user clicked it
+    /// earlier — would consume the V).
     private func commitPinned(character: String) {
         // Drop any firstResponder inside our window — the search field is
         // the prime suspect; without this the glyph types into the filter
         // instead of pasting into the target.
         panel?.makeFirstResponder(nil)
-        // Always hand activation back, not just when our panel is key:
-        // clicking the cell on a non-activating panel can still leave
-        // our app transiently frontmost, and reactivating is harmless
-        // when the target was already frontmost.
+        // Force-yield activation. With a non-activating panel a glyph
+        // click _shouldn't_ activate us, but the hotkey path / SwiftUI's
+        // tap-gesture machinery / having auto-focused the search field
+        // can each leave us active anyway. Without yielding, the synthetic
+        // ⌘V routes to our own key window — which now has no responder
+        // for it — and AppKit beeps. `deactivate()` pairs with the
+        // target.activate below to hand the next-frontmost slot to the
+        // user's previous app. (Apple flags `deactivate()` as "use
+        // sparingly", but a pinned palette that intentionally hands focus
+        // back is exactly the case it's documented for.)
+        NSApp.deactivate()
         reactivatePreviousApp()
-        // 0.12s lets the async target.activate() settle before the system
-        // routes the synthetic ⌘V. Same delay used by the unpinned path
-        // after close() reactivates.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+        // 0.15s lets deactivate + target.activate settle in the
+        // WindowServer before the synthetic ⌘V. The unpinned path uses
+        // 0.12 but it also gets to orderOut() the panel, which removes
+        // our last visible window and helps the OS reassign frontmost;
+        // pinned mode keeps the panel up, so we give it a bit more slack.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             PasteSimulator.paste(attributed: NSAttributedString(string: character))
         }
     }
