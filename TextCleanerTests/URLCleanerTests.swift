@@ -129,6 +129,53 @@ final class URLCleanerTests: XCTestCase {
         )
     }
 
+    func testAmazonCollapsesSlugAndRefSuffixToCanonicalDp() {
+        // Real-world Amazon URL: slug prefix + /dp/ASIN + /ref=…/ tracking
+        // suffix + a heap of search-context query parameters. The clean
+        // form is just /dp/ASIN.
+        let input = "https://www.amazon.it/Pacchetti-Compatibile-Motorhead-Sostituisce-969082-01/dp/B0FDQQ414N/ref=sr_1_7?__mk_it_IT=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=8JIU4D5A9U72&dib=eyJ2IjoiMSJ9.foo&dib_tag=se&keywords=filtro&qid=1&sr=8-7&th=1"
+        XCTAssertEqual(
+            URLCleaner.clean(input),
+            "https://www.amazon.it/dp/B0FDQQ414N"
+        )
+    }
+
+    func testAmazonGpProductCollapses() {
+        let input = "https://www.amazon.com/gp/product/B08L5VG843/ref=ppx_yo_dt?ie=UTF8&psc=1"
+        XCTAssertEqual(
+            URLCleaner.clean(input),
+            "https://www.amazon.com/dp/B08L5VG843"
+        )
+    }
+
+    func testAmazonMobileGpAwDCollapses() {
+        let input = "https://www.amazon.com/gp/aw/d/B08L5VG843/ref=mp_s_a_1_1?keywords=foo"
+        XCTAssertEqual(
+            URLCleaner.clean(input),
+            "https://www.amazon.com/dp/B08L5VG843"
+        )
+    }
+
+    func testAmazonSearchPageStripsTrackersAndKeepsKQuery() {
+        // No /dp/ → falls through to generic strip. We strip dib/dib_tag/
+        // __mk_*, but keep `k` (the actual search query a user might want
+        // to share). `crid` and the rest of the ref-style trackers are
+        // already in the Amazon strip set.
+        let input = "https://www.amazon.it/s?k=dyson&__mk_it_IT=foo&dib=junk&dib_tag=se&crid=ABC"
+        XCTAssertEqual(
+            URLCleaner.clean(input),
+            "https://www.amazon.it/s?k=dyson"
+        )
+    }
+
+    func testAmazonNonProductPathLeftAlone() {
+        // /gp/help/customer/display.html isn't a product page; canonicalise
+        // returns nil and the generic path runs. No params here, so nothing
+        // to do — must come out unchanged.
+        let input = "https://www.amazon.it/gp/help/customer/display.html"
+        XCTAssertEqual(URLCleaner.clean(input), input)
+    }
+
     // MARK: - Embedded URLs in surrounding text
 
     func testEmbeddedURLInProseIsCleanedInPlace() {

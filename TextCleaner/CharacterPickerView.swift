@@ -159,7 +159,14 @@ struct CharacterPickerView: View {
                 .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
         )
         .preferredColorScheme(theme.preferredColorScheme)
-        .onAppear { searchFocused = true }
+        .onAppear { searchFocused = !model.isPinned }
+        .onChangeCompat(of: model.isPinned) { pinned in
+            // Pinning yields keyboard focus to the frontmost target app, so
+            // the synthetic ⌘V on the next pick lands there instead of our
+            // own search field (which is otherwise still firstResponder
+            // from the auto-focus on open).
+            if pinned { searchFocused = false }
+        }
     }
 
     // MARK: - Header
@@ -416,6 +423,11 @@ struct CharacterPickerView: View {
                 model.hoverIndex = hovering ? flatIndex : nil
             }
             .onTapGesture {
+                // While pinned, ensure the search field is not first
+                // responder when we commit: the synthetic ⌘V follows
+                // keyboard focus, and a focused search field would receive
+                // the glyph and trigger an unwanted filter instead.
+                if model.isPinned { searchFocused = false }
                 model.selectedIndex = flatIndex
                 onSelect(entry.character)
             }

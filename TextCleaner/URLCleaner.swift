@@ -66,12 +66,81 @@ enum URLCleaner {
             return rebuilt
         }
 
+        // Amazon product pages canonicalise to `/dp/<ASIN>` regardless of
+        // how the user reached them. The slug prefix
+        // (/Pacchetti-Compatibile-Motorhead-…) and the /ref=sr_1_7 path
+        // suffix are decoration/tracking that Amazon's router ignores, so
+        // we can safely drop everything but the ASIN and rebuild a clean,
+        // shareable URL.
+        if let canonical = canonicalAmazonProductURL(components, host: host) {
+            return canonical
+        }
+
         if let items = components.queryItems, !items.isEmpty {
             let kept = items.filter { !shouldStrip(name: $0.name, host: host) }
             components.queryItems = kept.isEmpty ? nil : kept
         }
 
         return components.url?.absoluteString
+    }
+
+    // MARK: - Amazon product page canonicalisation
+
+    /// Collapses any Amazon product URL to its canonical `/dp/<ASIN>`
+    /// form, dropping the readable slug, any `/ref=…` tracking suffix on
+    /// the path, and every query parameter. Recognised input shapes:
+    ///   /dp/ASIN[/…]
+    ///   /<slug>/dp/ASIN[/…]
+    ///   /gp/product/ASIN[/…]
+    ///   /gp/aw/d/ASIN[/…]            (mobile-style)
+    /// Returns nil for any URL that isn't on an Amazon host or where the
+    /// ASIN slot doesn't look like a valid 10-char alphanumeric ASIN; the
+    /// caller then falls back to generic per-host query stripping (which
+    /// still cleans non-product pages like search results).
+    private static func canonicalAmazonProductURL(
+        _ components: URLComponents,
+        host: String
+    ) -> String? {
+        guard host.contains("amazon.") else { return nil }
+
+        let parts = components.path
+            .split(separator: "/", omittingEmptySubsequences: true)
+            .map(String.init)
+
+        var asin: String?
+        if let idx = parts.firstIndex(of: "dp"), idx + 1 < parts.count {
+            asin = parts[idx + 1]
+        } else if let idx = parts.firstIndex(of: "gp"),
+                  idx + 2 < parts.count,
+                  parts[idx + 1] == "product" {
+            asin = parts[idx + 2]
+        } else if let idx = parts.firstIndex(of: "gp"),
+                  idx + 3 < parts.count,
+                  parts[idx + 1] == "aw",
+                  parts[idx + 2] == "d" {
+            asin = parts[idx + 3]
+        }
+
+        guard let asin = asin, isLikelyASIN(asin) else { return nil }
+
+        var canonical = URLComponents()
+        canonical.scheme = components.scheme ?? "https"
+        canonical.host = components.host
+        canonical.path = "/dp/\(asin)"
+        return canonical.url?.absoluteString
+    }
+
+    /// ASINs are exactly 10 ASCII alphanumeric characters. Be strict so a
+    /// /dp/<something-else> URL (which shouldn't happen, but we don't
+    /// want to corrupt) is left alone for the generic path.
+    private static func isLikelyASIN(_ s: String) -> Bool {
+        guard s.count == 10 else { return false }
+        return s.unicodeScalars.allSatisfy { scalar in
+            let v = scalar.value
+            return (v >= 48 && v <= 57)   // 0-9
+                || (v >= 65 && v <= 90)   // A-Z
+                || (v >= 97 && v <= 122)  // a-z
+        }
     }
 
     // MARK: - Facebook group post reconstruction
@@ -178,6 +247,7 @@ enum URLCleaner {
     ]
 
     private static let universalPrefixes: [String] = [
+        "__mk_",       // Amazon localised marketplace marker
         "utm_",        // Google Analytics + everyone
         "__cft__",     // Facebook cookie/click fingerprint
         "__tn__",      // Facebook navigation tag
@@ -226,10 +296,14 @@ enum URLCleaner {
             return ["share_id"]
         }
         if host.contains("amazon.") {
+            // `dib` / `dib_tag` are the long encrypted breadcrumb tokens
+            // Amazon adds when you arrive from search; pure tracking, no
+            // semantic content. Locale params (`__mk_*`) come in via
+            // accidental copy from a localised search results page.
             return ["ref", "_encoding", "psc", "smid", "th", "ie",
                     "sprefix", "crid", "sr", "qid", "keywords",
                     "content-id", "language", "currency", "tag",
-                    "rdc", "linkcode"]
+                    "rdc", "linkcode", "dib", "dib_tag"]
         }
         return nil
     }

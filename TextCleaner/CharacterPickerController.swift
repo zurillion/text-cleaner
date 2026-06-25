@@ -253,6 +253,11 @@ final class CharacterPickerController {
             // keep typing there; with becomesKeyOnlyIfNeeded a glyph click
             // won't steal it back, so the synthetic ⌘V lands in that app.
             panel.becomesKeyOnlyIfNeeded = true
+            // AppKit-level defocus: drop firstResponder so the search
+            // field doesn't keep grabbing key events from inside our
+            // process. The SwiftUI @FocusState mirror is updated by the
+            // view's `onChange(of: model.isPinned)` for redundancy.
+            panel.makeFirstResponder(nil)
             reactivatePreviousApp()
         } else {
             // Reclaim keyboard focus for arrow / search / Esc navigation.
@@ -386,17 +391,26 @@ final class CharacterPickerController {
         }
     }
 
-    /// Pinned pick: insert without closing. The panel is a non-activating
-    /// palette, so normally it isn't key and the frontmost app receives
-    /// the ⌘V directly — meaning the glyph lands wherever the user is
-    /// currently typing, even if they've switched apps. The only time the
-    /// panel holds key focus is right after using the search field; in
-    /// that case hand focus back so the paste doesn't land in our panel.
+    /// Pinned pick: insert without closing. The synthetic ⌘V follows
+    /// keyboard focus, so two things must be true at paste time: our app
+    /// is not frontmost (otherwise we receive the keystroke ourselves),
+    /// and our own panel has no firstResponder (otherwise even an
+    /// in-process delivery — e.g. via the search field having grabbed
+    /// focus when the user clicked it earlier — would consume the V).
     private func commitPinned(character: String) {
-        if panel?.isKeyWindow == true {
-            reactivatePreviousApp()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+        // Drop any firstResponder inside our window — the search field is
+        // the prime suspect; without this the glyph types into the filter
+        // instead of pasting into the target.
+        panel?.makeFirstResponder(nil)
+        // Always hand activation back, not just when our panel is key:
+        // clicking the cell on a non-activating panel can still leave
+        // our app transiently frontmost, and reactivating is harmless
+        // when the target was already frontmost.
+        reactivatePreviousApp()
+        // 0.12s lets the async target.activate() settle before the system
+        // routes the synthetic ⌘V. Same delay used by the unpinned path
+        // after close() reactivates.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             PasteSimulator.paste(attributed: NSAttributedString(string: character))
         }
     }
