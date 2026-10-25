@@ -61,7 +61,7 @@ final class PopupViewModel: ObservableObject {
     /// HTML-conversion actions (falling back to the generic source when no
     /// HTML is on the clipboard), the generic source for everything else.
     func effectiveSource(for action: TextAction) -> NSAttributedString {
-        if action.prefersHTMLSource, let html = htmlSource {
+        if action.kind.prefersHTMLSource, let html = htmlSource {
             return html
         }
         return sourceAttributed
