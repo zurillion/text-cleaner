@@ -35,10 +35,8 @@ binary (Intel `x86_64` + Apple Silicon `arm64`).
   `com.example.TextCleaner` was *rejected by syspolicyd on macOS 26* even when
   notarized. Never revert to `com.example.*` or any reverse-DNS you don't
   control.
-- **Branch: `main` only.** Other branches are being deleted. (In the cloud env
-  a stray `claude/fix-font-settings-apply-YD9f6` kept getting checked out on
-  container recreation and had to be realigned to `main`; locally this won't
-  happen, but always confirm you're on `main` before committing.)
+- **Branch: `main` only.** `main` is the sole branch on GitHub and the
+  default. Work on it directly; branch only if the user explicitly asks.
 - **Repo stays PUBLIC.**
 - **No LICENSE file** yet (user: "per ora lascia così").
 - **Never** put a model identifier (e.g. "Opus", "claude-…") into commits,
@@ -59,11 +57,10 @@ Development is now **local** (the user compiles directly in Xcode).
   ignored. There is **no `project.yml`/XcodeGen** — the `.xcodeproj` is the
   source of truth.
 
-  > **One-time setup (local Mac, if the project isn't tracked yet):** the
-  > bundle existed only locally before the move to local dev. After pulling the
-  > updated `.gitignore`, start tracking the shared parts:
-  > `git add TextCleaner.xcodeproj/project.pbxproj TextCleaner.xcodeproj/project.xcworkspace/contents.xcworkspacedata`
-  > then commit. From then on it's a normal tracked file.
+  > **Already tracked:** `project.pbxproj` and
+  > `project.xcworkspace/contents.xcworkspacedata` are committed, so a fresh
+  > clone includes the project. Per-user `xcuserdata` stays ignored (a fresh
+  > clone may need its build scheme marked "Shared" in Xcode once).
 
   > **Adding a NEW `.swift` file:** it must be registered in the target's
   > *Compile Sources* phase or it won't compile ("Cannot find X in scope").
@@ -320,13 +317,12 @@ DMG transfer note: the user keeps **Gatekeeper disabled** on all their Macs.
 
 ## 12. Current state
 
-- `main` is at the latest work (as of this handover, HEAD = the "LaTeX →
-  Unicode: support \vert and \Vert" commit). All features described above are
-  merged and pushed.
+- All features described above are merged and pushed to `main`, and the
+  `.xcodeproj` is tracked too, so a clone builds as-is.
 - **Stale:** the root `README.md` still says "macOS 14+ (Sonoma, Sequoia,
   Tahoe)" — update it to macOS 12 Monterey + universal to match reality.
-- **GitHub side (user action):** delete the stray `claude/*` branches; confirm
-  `main` is the default branch and Pages points at `main` + `/docs`.
+- **GitHub side:** `main` is the only branch and the default. Verify Pages
+  still serves `main` + `/docs` (the live site works, so it's configured).
 - **Possible next work the user has floated / that's open:**
   - LaTeX converter spacing: a symbol-command immediately before an operator
     (`\vert =`, `\cdot`) glues them (`|=`, `⋅‖`) because LaTeX space-eating is
