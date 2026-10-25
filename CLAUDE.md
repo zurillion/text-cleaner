@@ -46,36 +46,51 @@ binary (Intel `x86_64` + Apple Silicon `arm64`).
 
 ---
 
-## 3. Local build & the #1 gotcha
+## 3. Local build, run & test
 
-Development is now **local** (the user compiles directly in Xcode).
+Development is **local**. The user works in Xcode (**⌘B** build, **⌘R** run,
+**⌘U** tests). The agent builds, runs and tests the same project from the
+command line with `xcodebuild`. Build after every non-trivial change: the
+compiler catches what a read-through misses (e.g. a property defined on the
+enum but called on the struct).
 
-- Open the project in Xcode, **⌘B** to build, **⌘R** to run, **⌘U** for tests.
-- **The Xcode project (`TextCleaner.xcodeproj/project.pbxproj`) is tracked in
-  git** so this agent can inspect/manage build phases and settings directly,
-  and the project survives a fresh clone. Per-user state (`xcuserdata`) stays
-  ignored. There is **no `project.yml`/XcodeGen** — the `.xcodeproj` is the
-  source of truth.
+- **Fresh clone:** run `swift Scripts/build-app-icon.swift` once before the
+  first build. It generates `TextCleaner/AppIcon.icns`, which is gitignored
+  but copied by the target's *Copy AppIcon* phase. Without it the build fails.
+- **Agent commands** (from the repo root; `build/` is gitignored):
+  - Build the copy the user runs:
+    `xcodebuild -project TextCleaner.xcodeproj -scheme TextCleaner -configuration Debug -derivedDataPath build build`
+    → `build/Build/Products/Debug/TextCleaner.app`.
+  - Run it: `open build/Build/Products/Debug/TextCleaner.app`. First check
+    `pgrep -f "TextCleaner.app/Contents/MacOS/TextCleaner"` and quit any old
+    instance, because two instances fight over the hotkeys. Rebuild and
+    relaunch before asking the user to try a change.
+  - Tests:
+    `xcodebuild test -project TextCleaner.xcodeproj -scheme TextCleaner -destination 'platform=macOS,arch=arm64' -derivedDataPath build/test-dd`.
+    The separate derived data leaves the user's copy in `build/` alone. About
+    10 s once warm.
+  - Universal check: build with
+    `-configuration Release -destination 'generic/platform=macOS'`, then
+    `lipo -info …/TextCleaner.app/Contents/MacOS/TextCleaner` → `x86_64 arm64`.
+- **Signing** is automatic (team `64W93FA2AN`, "Apple Development") and works
+  from the command line with no extra flags. The designated requirement stays
+  the same across rebuilds, so the Accessibility grant survives them.
+- **Same bundle id:** a debug build reads and writes the user's **real**
+  preferences, and one-shot migrations run on them.
+- **The Xcode project is tracked:** `project.pbxproj`, the workspace data and
+  the shared scheme (`xcshareddata/xcschemes/TextCleaner.xcscheme`). Per-user
+  `xcuserdata` stays ignored. There is **no `project.yml`/XcodeGen**: the
+  `.xcodeproj` is the source of truth.
 
-  > **Already tracked:** `project.pbxproj` and
-  > `project.xcworkspace/contents.xcworkspacedata` are committed, so a fresh
-  > clone includes the project. Per-user `xcuserdata` stays ignored (a fresh
-  > clone may need its build scheme marked "Shared" in Xcode once).
-
-  > **Adding a NEW `.swift` file:** it must be registered in the target's
-  > *Compile Sources* phase or it won't compile ("Cannot find X in scope").
-  > With the project tracked, the agent *can* edit `project.pbxproj` to add it,
-  > but that means four consistent UUID-keyed entries (a `PBXFileReference`, a
-  > `PBXBuildFile`, the enclosing `PBXGroup` child, and the `Sources` build
-  > phase) — get them wrong and the project won't open. The low-risk path is
-  > still to **drag the file into Xcode once**. Best of all: put new code in an
-  > **existing** file and avoid the issue (that's what the recent work did).
-
-- You (Claude) cannot build here either way — **the user's Xcode is the
-  compiler.** Expect build errors to come back from them; after any
-  non-trivial change, ask for the build result or watch for pasted errors.
-  Type mismatches that a read-through misses (e.g. a property defined on the
-  enum but called on the struct) will surface there.
+  > **Adding a NEW `.swift` file to the app:** the `TextCleaner` target uses
+  > classic groups, so the file must be registered in its *Compile Sources*
+  > phase or it won't compile ("Cannot find X in scope"). In
+  > `project.pbxproj` that means four consistent UUID-keyed entries: a
+  > `PBXFileReference`, a `PBXBuildFile`, the `PBXGroup` child and the
+  > `Sources` phase entry. Build right after the edit to check it.
+  >
+  > **New test files need nothing:** `TextCleanerTests/` is a synchronized
+  > folder, so every `.swift` file in it is compiled into the test target.
 
 ---
 
@@ -89,7 +104,7 @@ Entry / app shell
 - `Info.plist` — `CFBundleDisplayName`/`CFBundleName` = TextMagician;
   bundle id = `$(PRODUCT_BUNDLE_IDENTIFIER)` = `com.caristi.TextMagician`;
   `LSMinimumSystemVersion` = `$(MACOSX_DEPLOYMENT_TARGET)` (= 12.0, set in the
-  Xcode target, not in the repo).
+  target's build settings in `project.pbxproj`).
 
 Transformations popup
 - `PopupWindowController.swift` — the main popup + a sibling preview/edit
@@ -136,9 +151,13 @@ Settings & infra
 - `AppIcon.swift` — the app icon drawn in code (`AppIcon.make()`), also the
   source for `Scripts/build-app-icon.swift`.
 
-Tests: `TextCleanerTests/URLCleanerTests.swift` — URL cleaning **and** the
-LaTeX→Unicode tests (`LaTeXUnicodeTests` lives in that file on purpose, to
-avoid a manual test-target add).
+Tests: the `TextCleanerTests` unit-test target, hosted by the app
+(`@testable import TextCleaner`), compiles every file in `TextCleanerTests/`.
+`URLCleanerTests.swift` holds the URL-cleaning tests and `LaTeXUnicodeTests`;
+new test files can go next to it. Because the tests are hosted, the app
+launches during a test run (status item, hotkeys). The test target's
+deployment target is 14.0 because Xcode 27's XCTest is built for macOS 14;
+the app itself stays at 12.0.
 
 Ignore `WinTextCleaner/` (a separate Tauri/Windows experiment, not part of
 this app).
@@ -174,8 +193,8 @@ fallback behind `#available` — do **not** downgrade for everyone to a
 deprecated API. Current gated spots:
 
 - `onChangeCompat(of:perform:)` — 2-param `onChange` on macOS 14+, 1-param
-  (deprecated there) only on 12–13. (One intentional deprecation warning lives
-  in that helper.)
+  (deprecated there) only on 12–13. The build is warning-free: the 1-param
+  form is deprecated only from macOS 14, above the deployment target.
 - `AutomaticScrollIndicatorsIfAvailable` — `.scrollIndicators` on 13+, no-op on 12.
 - `SMAppService` (launch-at-login) gated to 13+; the toggle is hidden on 12
   via `AppSettings.supportsLaunchAtLogin`.
@@ -220,7 +239,8 @@ deprecated API. Current gated spots:
 4. If it must read a specific clipboard flavor (like the HTML actions), set
    `prefersHTMLSource` (**on `TextActionKind`**, not `TextAction`) and the
    model's `effectiveSource(for:)` will route it.
-5. Tests go in `URLCleanerTests.swift` (existing test file → no target edit).
+5. Add tests in `TextCleanerTests/`, in an existing file or a new one (new
+   files are picked up automatically, see §3).
 
 ### The three clipboard-normalization actions (recent work)
 - **LaTeX → Unicode** (`latexToUnicode`): single-pass scanner that turns
@@ -261,7 +281,9 @@ deprecated API. Current gated spots:
 Signing + notarization + DMG, all from the user's Mac:
 
 1. **Sign:** Developer ID Application, Hardened Runtime on. (The user is an
-   Apple Developer; direct distribution, not App Store.)
+   Apple Developer; direct distribution, not App Store.) The Developer ID
+   certificate must be in the keychain of the Mac that builds the release;
+   check with `security find-identity -v -p codesigning`.
 2. **Archive** with destination **"Any Mac"** to get the universal binary;
    verify with `lipo -info <app>/Contents/MacOS/TextCleaner` → `x86_64 arm64`.
 3. **notarytool credentials are per-Mac** (not iCloud-synced). On the local
@@ -300,10 +322,11 @@ DMG transfer note: the user keeps **Gatekeeper disabled** on all their Macs.
 
 ## 11. Known gotchas (quick recall)
 
-- New `.swift` file → must be in the target's *Compile Sources* phase. The
-  `.xcodeproj` is tracked (§3), so the agent can edit `project.pbxproj`, but
-  dragging the file into Xcode once is the low-risk path; putting code in an
-  existing file avoids it.
+- New `.swift` file in the app → must be in the `TextCleaner` target's
+  *Compile Sources* phase (§3). New files in `TextCleanerTests/` are picked up
+  automatically.
+- Fresh clone fails on a missing `AppIcon.icns` → run
+  `swift Scripts/build-app-icon.swift` (§3).
 - SF Symbols: avoid SF-Symbols-4 (macOS 13) names unless gated (§6).
 - Dictionary literals with many entries → build with `uniquingKeysWith` to
   avoid a duplicate-key launch trap (see `latexCommands`).
@@ -317,10 +340,11 @@ DMG transfer note: the user keeps **Gatekeeper disabled** on all their Macs.
 
 ## 12. Current state
 
-- All features described above are merged and pushed to `main`, and the
-  `.xcodeproj` is tracked too, so a clone builds as-is.
-- **Stale:** the root `README.md` still says "macOS 14+ (Sonoma, Sequoia,
-  Tahoe)" — update it to macOS 12 Monterey + universal to match reality.
+- All features described above are on `main`. The `.xcodeproj` and its
+  shared scheme are tracked, so a fresh clone builds once the icon is
+  generated (§3).
+- The `TextCleanerTests` unit-test target (36 tests) runs with ⌘U or
+  `xcodebuild test`.
 - **GitHub side:** `main` is the only branch and the default. Verify Pages
   still serves `main` + `/docs` (the live site works, so it's configured).
 - **Possible next work the user has floated / that's open:**
@@ -341,6 +365,7 @@ DMG transfer note: the user keeps **Gatekeeper disabled** on all their Macs.
   without explicit permission.
 - `git push -u origin main`; retry network failures a few times with backoff.
 - Do **not** open a PR unless the user asks.
-- End commit messages with the `Co-Authored-By: Claude …` line your harness
-  provides for your session (and the session link line if given). Never add a
-  model marketing name anywhere committed.
+- End commit messages with `Co-Authored-By: Claude <noreply@anthropic.com>`,
+  plus the session link line if your harness gives one. If the harness's line
+  includes a model name, drop it: no model name goes into anything committed
+  (§2).

@@ -34,6 +34,16 @@
 		F385CCC090058C20E97F5BC4 /* TextCleanerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609C584ACFED7DE10CADB1E9 /* TextCleanerApp.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A295F40AA4662B0C35E5DDAA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9C1802FB25B3CFC144DB9FCB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 536D3B1D46B6235A1A0DCCB1;
+			remoteInfo = TextCleaner;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		AC0B2CDF2FB72507001527AD /* Copy AppIcon */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -57,12 +67,12 @@
 		839D8CE51D40EEC74F7E45B4 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
 		85A6F855C5CDF13DEE929C18 /* AppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcon.swift; sourceTree = "<group>"; };
 		90359376F8A5EA44A6F31611 /* HotKeySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeySettings.swift; sourceTree = "<group>"; };
+		997041D107148AA372FD3519 /* TextCleanerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TextCleanerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9E28DA03C0F5C0C4460DD1DD /* PasteSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteSimulator.swift; sourceTree = "<group>"; };
 		AC0B2CD22FB25316001527AD /* URLCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLCleaner.swift; sourceTree = "<group>"; };
 		AC0B2CD42FB25D98001527AD /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
 		AC0B2CD62FB26315001527AD /* RichTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextView.swift; sourceTree = "<group>"; };
 		AC0B2CD82FB28CE8001527AD /* WindowDragHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDragHandle.swift; sourceTree = "<group>"; };
-		AC0B2CDA2FB2914D001527AD /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		AC0B2CE02FB72542001527AD /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		AC0B2CE22FB72AE1001527AD /* CharacterCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCatalog.swift; sourceTree = "<group>"; };
 		AC0B2CE32FB72AE1001527AD /* CharacterPickerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterPickerController.swift; sourceTree = "<group>"; };
@@ -76,22 +86,32 @@
 		DC4624D14EEDD681DFAD3075 /* TextCleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TextCleaner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F3148907A7F5943075AF7133 /* TextAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextAction.swift; sourceTree = "<group>"; };
 		F608B54F53F1D18F7CA89998 /* PopupTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupTheme.swift; sourceTree = "<group>"; };
-		"TEMP_806B477B-A33F-4E7B-A266-9F09E52EF85E" /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXGroup section */
-		AC0B2CD12FB2430B001527AD /* Recovered References */ = {
-			isa = PBXGroup;
-			children = (
-				"TEMP_806B477B-A33F-4E7B-A266-9F09E52EF85E" /* Local.xcconfig */,
-			);
-			name = "Recovered References";
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		55423DC7F4C1EE8212C7A633 /* TextCleanerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TextCleanerTests;
 			sourceTree = "<group>";
 		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4B16B3F417D5349EB133821B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
 		D77168A0F38D53FAA68F6015 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				DC4624D14EEDD681DFAD3075 /* TextCleaner.app */,
+				997041D107148AA372FD3519 /* TextCleanerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,7 +125,6 @@
 				AC0B2CE32FB72AE1001527AD /* CharacterPickerController.swift */,
 				AC0B2CE42FB72AE1001527AD /* CharacterPickerView.swift */,
 				AC0B2CE02FB72542001527AD /* AppIcon.icns */,
-				AC0B2CDA2FB2914D001527AD /* AppSettings.swift */,
 				AC0B2CD82FB28CE8001527AD /* WindowDragHandle.swift */,
 				AC0B2CD62FB26315001527AD /* RichTextView.swift */,
 				AC0B2CD42FB25D98001527AD /* PreviewView.swift */,
@@ -133,14 +152,37 @@
 			isa = PBXGroup;
 			children = (
 				F34B1A656FA8DC5139B39190 /* TextCleaner */,
+				55423DC7F4C1EE8212C7A633 /* TextCleanerTests */,
 				D77168A0F38D53FAA68F6015 /* Products */,
-				AC0B2CD12FB2430B001527AD /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		2058CD8EEDA361F1A5805A82 /* TextCleanerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0D4DC8FEF3BF5BDBAE492A69 /* Build configuration list for PBXNativeTarget "TextCleanerTests" */;
+			buildPhases = (
+				9F8A8391C571C8B9B3807B5A /* Sources */,
+				4B16B3F417D5349EB133821B /* Frameworks */,
+				1E779F90F5F9CBD32DC22E2D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2F28381A1094BDCDA44388DF /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				55423DC7F4C1EE8212C7A633 /* TextCleanerTests */,
+			);
+			name = TextCleanerTests;
+			packageProductDependencies = (
+			);
+			productName = TextCleanerTests;
+			productReference = 997041D107148AA372FD3519 /* TextCleanerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		536D3B1D46B6235A1A0DCCB1 /* TextCleaner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D410CCE7F7D1651C59E2A180 /* Build configuration list for PBXNativeTarget "TextCleaner" */;
@@ -168,6 +210,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					2058CD8EEDA361F1A5805A82 = {
+						CreatedOnToolsVersion = 27.1;
+						TestTargetID = 536D3B1D46B6235A1A0DCCB1;
+					};
 					536D3B1D46B6235A1A0DCCB1 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -188,9 +234,20 @@
 			projectRoot = "";
 			targets = (
 				536D3B1D46B6235A1A0DCCB1 /* TextCleaner */,
+				2058CD8EEDA361F1A5805A82 /* TextCleanerTests */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1E779F90F5F9CBD32DC22E2D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1B19E7CFF2657DB97C91F12D /* Sources */ = {
@@ -224,9 +281,38 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9F8A8391C571C8B9B3807B5A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		2F28381A1094BDCDA44388DF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 536D3B1D46B6235A1A0DCCB1 /* TextCleaner */;
+			targetProxy = A295F40AA4662B0C35E5DDAA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		04B35794C0E09B5D86F570E4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				DEVELOPMENT_TEAM = 64W93FA2AN;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.caristi.TextMagicianTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TextCleaner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TextCleaner";
+			};
+			name = Debug;
+		};
 		1DE71B9079DC8B58B503802A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -324,7 +410,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -336,6 +422,20 @@
 				SWIFT_VERSION = 5.10;
 			};
 			name = Debug;
+		};
+		972AA71AD00A73F2D363AD61 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				DEVELOPMENT_TEAM = 64W93FA2AN;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.caristi.TextMagicianTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TextCleaner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TextCleaner";
+			};
+			name = Release;
 		};
 		E155C8E0B30E3135CADBB379 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -384,7 +484,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -399,6 +499,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0D4DC8FEF3BF5BDBAE492A69 /* Build configuration list for PBXNativeTarget "TextCleanerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				04B35794C0E09B5D86F570E4 /* Debug */,
+				972AA71AD00A73F2D363AD61 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		B01E94FBDCC4A7A3517F6447 /* Build configuration list for PBXProject "TextCleaner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
