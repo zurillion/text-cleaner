@@ -52,6 +52,21 @@ final class PopupViewModel: ObservableObject {
 
     var sourceAttributed: NSAttributedString = NSAttributedString()
 
+    /// The clipboard's HTML representation, decoded once when the popup
+    /// opens (nil when the clipboard has no HTML). Actions that prefer the
+    /// HTML source read this; everything else reads `sourceAttributed`.
+    var htmlSource: NSAttributedString? = nil
+
+    /// The source an action should transform: the HTML-decoded flavor for
+    /// HTML-conversion actions (falling back to the generic source when no
+    /// HTML is on the clipboard), the generic source for everything else.
+    func effectiveSource(for action: TextAction) -> NSAttributedString {
+        if action.prefersHTMLSource, let html = htmlSource {
+            return html
+        }
+        return sourceAttributed
+    }
+
     /// True when the most recent `selectedIndex` change came from
     /// keyboard navigation. Mouse hover sets it false so the list
     /// doesn't auto-scroll and "chase" the cursor — a hovered row is by
@@ -98,7 +113,8 @@ final class PopupViewModel: ObservableObject {
         guard actions.indices.contains(selectedIndex) else {
             return NSAttributedString()
         }
-        return actions[selectedIndex].transform(sourceAttributed)
+        let action = actions[selectedIndex]
+        return action.transform(effectiveSource(for: action))
     }
 }
 

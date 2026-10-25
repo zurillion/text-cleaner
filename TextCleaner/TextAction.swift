@@ -9,6 +9,13 @@ enum TextActionKind: String, CaseIterable, Codable {
     case camelCase
     case snakeCase
     case cleanURL
+    // Clipboard HTML normalisation. When the clipboard carries competing
+    // flavors (e.g. plain text + HTML from a browser copy), these read the
+    // HTML specifically and re-emit it as clean rich text (RTF) or as
+    // plain text, so the paste is predictable instead of leaving the
+    // target app to pick a flavor.
+    case htmlToRichText
+    case htmlToPlainText
     // Unicode "font" styles (yaytext-style). Plain-text only. These are
     // disabled by default (see `defaultEnabled`) so the popup doesn't get
     // flooded — the user opts into the ones they want from Settings.
@@ -47,6 +54,18 @@ enum TextActionKind: String, CaseIterable, Codable {
     /// the popup is scrollable, and the user prunes from Settings what
     /// they don't use.
     var defaultEnabled: Bool { true }
+
+    /// Actions that operate on the clipboard's HTML representation
+    /// specifically rather than on the preferred flavor the popup read
+    /// for every other action. The popup feeds them the HTML-decoded
+    /// source (falling back to the generic source when the clipboard has
+    /// no HTML).
+    var prefersHTMLSource: Bool {
+        switch self {
+        case .htmlToRichText, .htmlToPlainText: return true
+        default: return false
+        }
+    }
 }
 
 struct TextAction: Identifiable, Hashable {
@@ -80,6 +99,8 @@ struct TextAction: Identifiable, Hashable {
         TextAction(kind: .camelCase,        title: "camelCase",        icon: "text.append"),
         TextAction(kind: .snakeCase,        title: "snake_case",       icon: "minus.forwardslash.plus"),
         TextAction(kind: .cleanURL,         title: "Clean URL",        icon: "link"),
+        TextAction(kind: .htmlToRichText,   title: "HTML → Rich Text",  icon: "doc.richtext"),
+        TextAction(kind: .htmlToPlainText,  title: "HTML → Plain Text", icon: "doc.plaintext"),
         // Unicode styles
         TextAction(kind: .boldSerif,             title: "Bold (serif)",            icon: "bold"),
         TextAction(kind: .italicSerif,           title: "Italic (serif)",          icon: "italic"),
@@ -128,6 +149,13 @@ struct TextAction: Identifiable, Hashable {
             return NSAttributedString(string: TextTransforms.snakeCase(input.string))
         case .cleanURL:
             return NSAttributedString(string: URLCleaner.clean(input.string))
+        case .htmlToRichText:
+            // `input` is already the HTML-decoded attributed string (the
+            // popup feeds us the HTML source). Passing it through re-emits
+            // it as RTF at paste time — see PasteSimulator.writeAttributed.
+            return input
+        case .htmlToPlainText:
+            return NSAttributedString(string: input.string)
 
         // Unicode styles — plain text only, so they operate on the
         // string and discard any incoming formatting.

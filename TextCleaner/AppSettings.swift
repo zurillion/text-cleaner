@@ -35,6 +35,7 @@ final class AppSettings: ObservableObject {
         static let recentPickedCharacters    = "TextCleaner.recentPickedCharacters"
         static let recentPickedEmojis        = "TextCleaner.recentPickedEmojis"
         static let separatorAfterKinds       = "TextCleaner.separatorAfterKinds"
+        static let didMigrateHTMLSeparator   = "TextCleaner.didMigrateHTMLSeparator"
     }
 
     /// How many entries the picker's Recent section keeps. Pushing a
@@ -197,10 +198,11 @@ final class AppSettings: ObservableObject {
     }
 
     /// Separators drawn on a fresh install: one between the original
-    /// text-processing actions and the Unicode styles, one between the
-    /// upside-down / reverse pair and the rest of the styles.
+    /// text-processing actions (now including the HTML-conversion pair)
+    /// and the Unicode styles, one between the upside-down / reverse pair
+    /// and the rest of the styles.
     static var defaultSeparatorAfterKinds: Set<TextActionKind> {
-        [.cleanURL, .reverse]
+        [.htmlToPlainText, .reverse]
     }
 
     private init() {
@@ -248,11 +250,27 @@ final class AppSettings: ObservableObject {
         // Missing key = first run, seed with the defaults. An explicitly
         // saved empty array (the user removed every separator) stays
         // empty.
+        var separators: Set<TextActionKind>
         if let raw = defaults.stringArray(forKey: Key.separatorAfterKinds) {
-            self.separatorAfterKinds = Set(raw.compactMap(TextActionKind.init(rawValue:)))
+            separators = Set(raw.compactMap(TextActionKind.init(rawValue:)))
         } else {
-            self.separatorAfterKinds = Self.defaultSeparatorAfterKinds
+            separators = Self.defaultSeparatorAfterKinds
         }
+        // One-time migration: the HTML-conversion actions were inserted
+        // into section 1 (right after Clean URL), so the section-1/2
+        // boundary separator moves from `.cleanURL` down past them to
+        // `.htmlToPlainText`. Only touch a set that still carries the old
+        // boundary, and only once — a user who later customises separators
+        // is never second-guessed.
+        if !defaults.bool(forKey: Key.didMigrateHTMLSeparator) {
+            if separators.contains(.cleanURL) {
+                separators.remove(.cleanURL)
+                separators.insert(.htmlToPlainText)
+                defaults.set(separators.map(\.rawValue), forKey: Key.separatorAfterKinds)
+            }
+            defaults.set(true, forKey: Key.didMigrateHTMLSeparator)
+        }
+        self.separatorAfterKinds = separators
 
         if #available(macOS 13, *) {
             self.launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -299,21 +317,42 @@ final class AppSettings: ObservableObject {
 
     /// Decodes the saved list leniently: unknown kinds are dropped and
     /// any kinds present in `TextActionKind.allCases` but missing from
-    /// the saved list are appended at their `defaultEnabled` state. This
-    /// way adding a built-in action in code doesn't wipe the user's
-    /// existing customisations, and newly added Unicode styles arrive
-    /// disabled rather than flooding the popup of an existing user.
+    /// the saved list are inserted at their canonical position — right
+    /// after the nearest preceding kind from `allCases` that's already in
+    /// the list — rather than appended at the end. This way a newly
+    /// shipped built-in action turns up where it was designed to live
+    /// (e.g. the HTML actions right after Clean URL) instead of at the
+    /// bottom of an existing user's list, while their custom order is
+    /// otherwise preserved. Newly added kinds arrive at their
+    /// `defaultEnabled` state.
     private static func decodePreferences(from data: Data) -> [ActionPreference] {
         struct Raw: Codable { let kind: String; var enabled: Bool }
         let raws = (try? JSONDecoder().decode([Raw].self, from: data)) ?? []
-        let stored: [ActionPreference] = raws.compactMap { raw in
+        var result: [ActionPreference] = raws.compactMap { raw in
             guard let kind = TextActionKind(rawValue: raw.kind) else { return nil }
             return ActionPreference(kind: kind, enabled: raw.enabled)
         }
-        let known = Set(stored.map(\.kind))
-        let missing = TextActionKind.allCases
-            .filter { !known.contains($0) }
-            .map { ActionPreference(kind: $0, enabled: $0.defaultEnabled) }
-        return stored + missing
+        let all = TextActionKind.allCases
+        for (idx, kind) in all.enumerated() {
+            if result.contains(where: { $0.kind == kind }) { continue }
+            // Find the insertion point: just after the nearest preceding
+            // allCases kind that's already in the list. Walking backwards
+            // (and checking the live `result`) keeps several consecutive
+            // new kinds in their canonical order.
+            var insertAt = result.count
+            var j = idx - 1
+            while j >= 0 {
+                if let pos = result.firstIndex(where: { $0.kind == all[j] }) {
+                    insertAt = pos + 1
+                    break
+                }
+                j -= 1
+            }
+            result.insert(
+                ActionPreference(kind: kind, enabled: kind.defaultEnabled),
+                at: insertAt
+            )
+        }
+        return result
     }
 }

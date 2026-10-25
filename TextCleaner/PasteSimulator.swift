@@ -41,6 +41,25 @@ enum PasteSimulator {
         return NSAttributedString()
     }
 
+    /// Decodes the clipboard's HTML representation specifically, ignoring
+    /// any competing RTF / RTFD / plain flavors. Returns nil when the
+    /// clipboard carries no HTML. The HTML-conversion actions use this so
+    /// they target the HTML on purpose, even when a richer flavor is also
+    /// present (e.g. a Word copy that carries RTF + HTML + plain) — which
+    /// is what distinguishes them from the generic "Unvaried" /
+    /// "Remove formatting" actions that operate on the preferred flavor.
+    static func readHTMLAttributed() -> NSAttributedString? {
+        let pb = NSPasteboard.general
+        guard let data = pb.data(forType: .html),
+              let attr = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.html],
+                documentAttributes: nil) else {
+            return nil
+        }
+        return attr
+    }
+
     // MARK: - Paste
 
     static func paste(attributed: NSAttributedString) {

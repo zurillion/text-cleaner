@@ -60,6 +60,7 @@ final class PopupWindowController {
         model.actions = enabled
         model.separatorAfterIndex = Self.separatorIndices(for: enabled)
         model.sourceAttributed = PasteSimulator.readSourceAttributed()
+        model.htmlSource = PasteSimulator.readHTMLAttributed()
         model.selectedIndex = 0
         model.showsPreview = false
         model.isEditing = false
@@ -542,7 +543,7 @@ final class PopupWindowController {
 
     private func commitAction(_ action: TextAction) {
         guard let model = model else { return }
-        let attributed = action.transform(model.sourceAttributed)
+        let attributed = action.transform(model.effectiveSource(for: action))
         pasteAndClose(attributed: attributed)
     }
 
