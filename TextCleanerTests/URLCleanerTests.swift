@@ -265,6 +265,21 @@ final class LaTeXUnicodeTests: XCTestCase {
         XCTAssertEqual(TextTransforms.latexToUnicode("it costs $5 today"), "it costs $5 today")
     }
 
+    func testAbsoluteValueAndNormBars() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\vert x\\vert"), "|x|")
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\Vert v\\Vert"), "‖v‖")
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\lVert A\\rVert"), "‖A‖")
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\|x\\|"), "‖x‖")
+    }
+
+    func testCauchySchwarzNorms() {
+        // |⟨u, v⟩| = ‖u‖·‖v‖
+        XCTAssertEqual(
+            TextTransforms.latexToUnicode("\\Vert u\\Vert \\cdot \\Vert v\\Vert"),
+            "‖u‖⋅‖v‖"
+        )
+    }
+
     func testPlainTextUnchanged() {
         let input = "No math here, just prose."
         XCTAssertEqual(TextTransforms.latexToUnicode(input), input)

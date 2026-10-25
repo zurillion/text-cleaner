@@ -397,7 +397,7 @@ enum TextTransforms {
     private static let latexSymbols: [String: String] = [
         "(": "", ")": "", "[": "", "]": "",
         ",": " ", ";": " ", ":": " ", "!": "", " ": " ",
-        "\\": "\n",
+        "\\": "\n", "|": "‖",
         "{": "{", "}": "}", "$": "$", "%": "%", "&": "&", "#": "#", "_": "_",
     ]
 
@@ -473,6 +473,9 @@ enum TextTransforms {
         ("vdots", "⋮"), ("ddots", "⋱"), ("sqrt", "√"), ("surd", "√"),
         ("backslash", "\\"), ("langle", "⟨"), ("rangle", "⟩"),
         ("lceil", "⌈"), ("rceil", "⌉"), ("lfloor", "⌊"), ("rfloor", "⌋"),
+        // Absolute-value / norm bars (and their \left…\right variants)
+        ("vert", "|"), ("lvert", "|"), ("rvert", "|"),
+        ("Vert", "‖"), ("lVert", "‖"), ("rVert", "‖"),
         ("flat", "♭"), ("sharp", "♯"), ("natural", "♮"),
         ("dagger", "†"), ("ddagger", "‡"),
         // Delimiter sizing & math-style directives (drop; the glyph stays)
