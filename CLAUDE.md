@@ -53,15 +53,26 @@ binary (Intel `x86_64` + Apple Silicon `arm64`).
 Development is now **local** (the user compiles directly in Xcode).
 
 - Open the project in Xcode, **⌘B** to build, **⌘R** to run, **⌘U** for tests.
-- **`TextCleaner.xcodeproj/` is gitignored** (see `.gitignore`). The project
-  is maintained by hand in Xcode — despite the gitignore comment, there is
-  **no `project.yml`/XcodeGen** in the repo. Consequence:
+- **The Xcode project (`TextCleaner.xcodeproj/project.pbxproj`) is tracked in
+  git** so this agent can inspect/manage build phases and settings directly,
+  and the project survives a fresh clone. Per-user state (`xcuserdata`) stays
+  ignored. There is **no `project.yml`/XcodeGen** — the `.xcodeproj` is the
+  source of truth.
 
-  > **When you add a NEW `.swift` file, the user must add it to the target's
-  > *Compile Sources* build phase in Xcode, or it won't compile
-  > ("Cannot find X in scope").** Prefer putting new code in an **existing**
-  > file to avoid this. The same applies to new files in `TextCleanerTests/`
-  > (manual add to the test target).
+  > **One-time setup (local Mac, if the project isn't tracked yet):** the
+  > bundle existed only locally before the move to local dev. After pulling the
+  > updated `.gitignore`, start tracking the shared parts:
+  > `git add TextCleaner.xcodeproj/project.pbxproj TextCleaner.xcodeproj/project.xcworkspace/contents.xcworkspacedata`
+  > then commit. From then on it's a normal tracked file.
+
+  > **Adding a NEW `.swift` file:** it must be registered in the target's
+  > *Compile Sources* phase or it won't compile ("Cannot find X in scope").
+  > With the project tracked, the agent *can* edit `project.pbxproj` to add it,
+  > but that means four consistent UUID-keyed entries (a `PBXFileReference`, a
+  > `PBXBuildFile`, the enclosing `PBXGroup` child, and the `Sources` build
+  > phase) — get them wrong and the project won't open. The low-risk path is
+  > still to **drag the file into Xcode once**. Best of all: put new code in an
+  > **existing** file and avoid the issue (that's what the recent work did).
 
 - You (Claude) cannot build here either way — **the user's Xcode is the
   compiler.** Expect build errors to come back from them; after any
@@ -292,7 +303,10 @@ DMG transfer note: the user keeps **Gatekeeper disabled** on all their Macs.
 
 ## 11. Known gotchas (quick recall)
 
-- New `.swift` file → manual *Compile Sources* add in Xcode (§3).
+- New `.swift` file → must be in the target's *Compile Sources* phase. The
+  `.xcodeproj` is tracked (§3), so the agent can edit `project.pbxproj`, but
+  dragging the file into Xcode once is the low-risk path; putting code in an
+  existing file avoids it.
 - SF Symbols: avoid SF-Symbols-4 (macOS 13) names unless gated (§6).
 - Dictionary literals with many entries → build with `uniquingKeysWith` to
   avoid a duplicate-key launch trap (see `latexCommands`).

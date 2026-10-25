@@ -15,8 +15,12 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
-# XcodeGen output (regenerated from project.yml)
-TextCleaner.xcodeproj/
+# Xcode project. The SHARED project file (project.pbxproj and
+# project.xcworkspace/contents.xcworkspacedata) IS tracked, so the agent can
+# manage build phases/settings directly and the project survives a fresh
+# clone. Per-user state inside the bundle (xcuserdata) stays ignored by the
+# generic rules above. There is no XcodeGen/project.yml — the .xcodeproj is
+# the source of truth.
 
 
 # Swift Package Manager
