@@ -1,0 +1,423 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		23CE37954E20F211D214AF7C /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E68B2806BBF7008A89E72 /* AppSettings.swift */; };
+		25EEF81338FFF6C90A2438A0 /* PopupTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F608B54F53F1D18F7CA89998 /* PopupTheme.swift */; };
+		2D9F0D0C049ACA40D1832F19 /* PopupWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5074637AA63C0AAEB43681B2 /* PopupWindowController.swift */; };
+		49A14DE4BA02DBB61572B98F /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA15F105A95CBD91A87A2B9D /* SettingsWindowController.swift */; };
+		4D86D33C7338FF6DB6B287BD /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 839D8CE51D40EEC74F7E45B4 /* ShortcutRecorder.swift */; };
+		70B559E8BD632E76377195E4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2AAC56D52C81C1933F2E66B /* SettingsView.swift */; };
+		770BFCDDFAB383AEF7F6F4FD /* PopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78235118C54FAF7EE1F8D2A6 /* PopupView.swift */; };
+		814A9882E18229DD6CFE829E /* TextAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3148907A7F5943075AF7133 /* TextAction.swift */; };
+		93113629C88C5DDB56B241B7 /* HotKeySettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90359376F8A5EA44A6F31611 /* HotKeySettings.swift */; };
+		9A0F827A0B80E595FD4D2FDD /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488F0252E3626A872233A380 /* AppDelegate.swift */; };
+		AC0B2CD32FB25316001527AD /* URLCleaner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CD22FB25316001527AD /* URLCleaner.swift */; };
+		AC0B2CD52FB25D98001527AD /* PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CD42FB25D98001527AD /* PreviewView.swift */; };
+		AC0B2CD72FB26315001527AD /* RichTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CD62FB26315001527AD /* RichTextView.swift */; };
+		AC0B2CD92FB28CE8001527AD /* WindowDragHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CD82FB28CE8001527AD /* WindowDragHandle.swift */; };
+		AC0B2CE12FB7254D001527AD /* AppIcon.icns in Copy AppIcon */ = {isa = PBXBuildFile; fileRef = AC0B2CE02FB72542001527AD /* AppIcon.icns */; };
+		AC0B2CE52FB72AE1001527AD /* CharacterCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CE22FB72AE1001527AD /* CharacterCatalog.swift */; };
+		AC0B2CE62FB72AE1001527AD /* CharacterPickerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CE32FB72AE1001527AD /* CharacterPickerController.swift */; };
+		AC0B2CE72FB72AE1001527AD /* CharacterPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0B2CE42FB72AE1001527AD /* CharacterPickerView.swift */; };
+		ACCAD5772FDC4D4D00BEFFCA /* EmojiCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCAD5762FDC4D4D00BEFFCA /* EmojiCatalog.swift */; };
+		ACCAD5792FDE1E1600BEFFCA /* TextStyler.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCAD5782FDE1E1600BEFFCA /* TextStyler.swift */; };
+		B7863E2FF780779FA376C7F4 /* PasteSimulator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E28DA03C0F5C0C4460DD1DD /* PasteSimulator.swift */; };
+		CC1EED8A210533812BB740F4 /* KeyboardShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97982924E2728372D417D25 /* KeyboardShortcut.swift */; };
+		D25FE5DA8FB52C7CC31B44AC /* HotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB909AC4F477B16262D4FD34 /* HotKeyManager.swift */; };
+		D6CC5C5EADECC1CF65581199 /* AppIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A6F855C5CDF13DEE929C18 /* AppIcon.swift */; };
+		F385CCC090058C20E97F5BC4 /* TextCleanerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609C584ACFED7DE10CADB1E9 /* TextCleanerApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AC0B2CDF2FB72507001527AD /* Copy AppIcon */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+				AC0B2CE12FB7254D001527AD /* AppIcon.icns in Copy AppIcon */,
+			);
+			name = "Copy AppIcon";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		488F0252E3626A872233A380 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		5074637AA63C0AAEB43681B2 /* PopupWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupWindowController.swift; sourceTree = "<group>"; };
+		609C584ACFED7DE10CADB1E9 /* TextCleanerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextCleanerApp.swift; sourceTree = "<group>"; };
+		78235118C54FAF7EE1F8D2A6 /* PopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupView.swift; sourceTree = "<group>"; };
+		820E68B2806BBF7008A89E72 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		839D8CE51D40EEC74F7E45B4 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
+		85A6F855C5CDF13DEE929C18 /* AppIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIcon.swift; sourceTree = "<group>"; };
+		90359376F8A5EA44A6F31611 /* HotKeySettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeySettings.swift; sourceTree = "<group>"; };
+		9E28DA03C0F5C0C4460DD1DD /* PasteSimulator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteSimulator.swift; sourceTree = "<group>"; };
+		AC0B2CD22FB25316001527AD /* URLCleaner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLCleaner.swift; sourceTree = "<group>"; };
+		AC0B2CD42FB25D98001527AD /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
+		AC0B2CD62FB26315001527AD /* RichTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextView.swift; sourceTree = "<group>"; };
+		AC0B2CD82FB28CE8001527AD /* WindowDragHandle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowDragHandle.swift; sourceTree = "<group>"; };
+		AC0B2CDA2FB2914D001527AD /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		AC0B2CE02FB72542001527AD /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		AC0B2CE22FB72AE1001527AD /* CharacterCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterCatalog.swift; sourceTree = "<group>"; };
+		AC0B2CE32FB72AE1001527AD /* CharacterPickerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterPickerController.swift; sourceTree = "<group>"; };
+		AC0B2CE42FB72AE1001527AD /* CharacterPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CharacterPickerView.swift; sourceTree = "<group>"; };
+		ACCAD5762FDC4D4D00BEFFCA /* EmojiCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmojiCatalog.swift; sourceTree = "<group>"; };
+		ACCAD5782FDE1E1600BEFFCA /* TextStyler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextStyler.swift; sourceTree = "<group>"; };
+		B2AAC56D52C81C1933F2E66B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B97982924E2728372D417D25 /* KeyboardShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcut.swift; sourceTree = "<group>"; };
+		BB909AC4F477B16262D4FD34 /* HotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKeyManager.swift; sourceTree = "<group>"; };
+		DA15F105A95CBD91A87A2B9D /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		DC4624D14EEDD681DFAD3075 /* TextCleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TextCleaner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3148907A7F5943075AF7133 /* TextAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextAction.swift; sourceTree = "<group>"; };
+		F608B54F53F1D18F7CA89998 /* PopupTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopupTheme.swift; sourceTree = "<group>"; };
+		"TEMP_806B477B-A33F-4E7B-A266-9F09E52EF85E" /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		AC0B2CD12FB2430B001527AD /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				"TEMP_806B477B-A33F-4E7B-A266-9F09E52EF85E" /* Local.xcconfig */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		D77168A0F38D53FAA68F6015 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DC4624D14EEDD681DFAD3075 /* TextCleaner.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F34B1A656FA8DC5139B39190 /* TextCleaner */ = {
+			isa = PBXGroup;
+			children = (
+				AC0B2CE22FB72AE1001527AD /* CharacterCatalog.swift */,
+				ACCAD5782FDE1E1600BEFFCA /* TextStyler.swift */,
+				ACCAD5762FDC4D4D00BEFFCA /* EmojiCatalog.swift */,
+				AC0B2CE32FB72AE1001527AD /* CharacterPickerController.swift */,
+				AC0B2CE42FB72AE1001527AD /* CharacterPickerView.swift */,
+				AC0B2CE02FB72542001527AD /* AppIcon.icns */,
+				AC0B2CDA2FB2914D001527AD /* AppSettings.swift */,
+				AC0B2CD82FB28CE8001527AD /* WindowDragHandle.swift */,
+				AC0B2CD62FB26315001527AD /* RichTextView.swift */,
+				AC0B2CD42FB25D98001527AD /* PreviewView.swift */,
+				488F0252E3626A872233A380 /* AppDelegate.swift */,
+				85A6F855C5CDF13DEE929C18 /* AppIcon.swift */,
+				820E68B2806BBF7008A89E72 /* AppSettings.swift */,
+				BB909AC4F477B16262D4FD34 /* HotKeyManager.swift */,
+				90359376F8A5EA44A6F31611 /* HotKeySettings.swift */,
+				B97982924E2728372D417D25 /* KeyboardShortcut.swift */,
+				9E28DA03C0F5C0C4460DD1DD /* PasteSimulator.swift */,
+				F608B54F53F1D18F7CA89998 /* PopupTheme.swift */,
+				78235118C54FAF7EE1F8D2A6 /* PopupView.swift */,
+				5074637AA63C0AAEB43681B2 /* PopupWindowController.swift */,
+				B2AAC56D52C81C1933F2E66B /* SettingsView.swift */,
+				DA15F105A95CBD91A87A2B9D /* SettingsWindowController.swift */,
+				839D8CE51D40EEC74F7E45B4 /* ShortcutRecorder.swift */,
+				F3148907A7F5943075AF7133 /* TextAction.swift */,
+				609C584ACFED7DE10CADB1E9 /* TextCleanerApp.swift */,
+				AC0B2CD22FB25316001527AD /* URLCleaner.swift */,
+			);
+			path = TextCleaner;
+			sourceTree = "<group>";
+		};
+		FD9AAD55E6171C7D492C861E = {
+			isa = PBXGroup;
+			children = (
+				F34B1A656FA8DC5139B39190 /* TextCleaner */,
+				D77168A0F38D53FAA68F6015 /* Products */,
+				AC0B2CD12FB2430B001527AD /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		536D3B1D46B6235A1A0DCCB1 /* TextCleaner */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D410CCE7F7D1651C59E2A180 /* Build configuration list for PBXNativeTarget "TextCleaner" */;
+			buildPhases = (
+				1B19E7CFF2657DB97C91F12D /* Sources */,
+				AC0B2CDF2FB72507001527AD /* Copy AppIcon */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TextCleaner;
+			packageProductDependencies = (
+			);
+			productName = TextCleaner;
+			productReference = DC4624D14EEDD681DFAD3075 /* TextCleaner.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9C1802FB25B3CFC144DB9FCB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					536D3B1D46B6235A1A0DCCB1 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = B01E94FBDCC4A7A3517F6447 /* Build configuration list for PBXProject "TextCleaner" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FD9AAD55E6171C7D492C861E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D77168A0F38D53FAA68F6015 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				536D3B1D46B6235A1A0DCCB1 /* TextCleaner */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1B19E7CFF2657DB97C91F12D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9A0F827A0B80E595FD4D2FDD /* AppDelegate.swift in Sources */,
+				D6CC5C5EADECC1CF65581199 /* AppIcon.swift in Sources */,
+				23CE37954E20F211D214AF7C /* AppSettings.swift in Sources */,
+				ACCAD5792FDE1E1600BEFFCA /* TextStyler.swift in Sources */,
+				D25FE5DA8FB52C7CC31B44AC /* HotKeyManager.swift in Sources */,
+				93113629C88C5DDB56B241B7 /* HotKeySettings.swift in Sources */,
+				CC1EED8A210533812BB740F4 /* KeyboardShortcut.swift in Sources */,
+				B7863E2FF780779FA376C7F4 /* PasteSimulator.swift in Sources */,
+				AC0B2CD92FB28CE8001527AD /* WindowDragHandle.swift in Sources */,
+				25EEF81338FFF6C90A2438A0 /* PopupTheme.swift in Sources */,
+				AC0B2CE52FB72AE1001527AD /* CharacterCatalog.swift in Sources */,
+				AC0B2CE62FB72AE1001527AD /* CharacterPickerController.swift in Sources */,
+				ACCAD5772FDC4D4D00BEFFCA /* EmojiCatalog.swift in Sources */,
+				AC0B2CE72FB72AE1001527AD /* CharacterPickerView.swift in Sources */,
+				AC0B2CD32FB25316001527AD /* URLCleaner.swift in Sources */,
+				770BFCDDFAB383AEF7F6F4FD /* PopupView.swift in Sources */,
+				2D9F0D0C049ACA40D1832F19 /* PopupWindowController.swift in Sources */,
+				AC0B2CD72FB26315001527AD /* RichTextView.swift in Sources */,
+				70B559E8BD632E76377195E4 /* SettingsView.swift in Sources */,
+				AC0B2CD52FB25D98001527AD /* PreviewView.swift in Sources */,
+				49A14DE4BA02DBB61572B98F /* SettingsWindowController.swift in Sources */,
+				4D86D33C7338FF6DB6B287BD /* ShortcutRecorder.swift in Sources */,
+				814A9882E18229DD6CFE829E /* TextAction.swift in Sources */,
+				F385CCC090058C20E97F5BC4 /* TextCleanerApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DE71B9079DC8B58B503802A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TextCleaner/TextCleaner.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 64W93FA2AN;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TextCleaner/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.caristi.TextMagician;
+				PRODUCT_NAME = TextCleaner;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		2212600D6D67DBA33D8B0A40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = TextCleaner/TextCleaner.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = 64W93FA2AN;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = TextCleaner/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.caristi.TextMagician;
+				PRODUCT_NAME = TextCleaner;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		82550B7A64360CE079D7C9B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Debug;
+		};
+		E155C8E0B30E3135CADBB379 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B01E94FBDCC4A7A3517F6447 /* Build configuration list for PBXProject "TextCleaner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				82550B7A64360CE079D7C9B6 /* Debug */,
+				E155C8E0B30E3135CADBB379 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D410CCE7F7D1651C59E2A180 /* Build configuration list for PBXNativeTarget "TextCleaner" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2212600D6D67DBA33D8B0A40 /* Debug */,
+				1DE71B9079DC8B58B503802A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9C1802FB25B3CFC144DB9FCB /* Project object */;
+}
