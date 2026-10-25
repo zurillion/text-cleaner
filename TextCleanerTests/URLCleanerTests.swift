@@ -209,3 +209,64 @@ final class URLCleanerTests: XCTestCase {
         XCTAssertEqual(URLCleaner.clean(input), input)
     }
 }
+
+/// Lives here (rather than its own file) because the Xcode test target is
+/// generated/gitignored; adding a file would need a manual target edit.
+final class LaTeXUnicodeTests: XCTestCase {
+
+    func testGoogleAIModeLambdaCDM() {
+        // The exact shape Google's AI answer leaves on the clipboard.
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\(\\Lambda \\)CDM"), "ΛCDM")
+    }
+
+    func testInlineMathInsideParens() {
+        XCTAssertEqual(
+            TextTransforms.latexToUnicode("modello standard (\\(\\Lambda \\)CDM)"),
+            "modello standard (ΛCDM)"
+        )
+    }
+
+    func testGreekAndOperators() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\alpha \\to \\infty"), "α→∞")
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\pi r^2"), "πr²")
+    }
+
+    func testDisplayMathDelimiters() {
+        XCTAssertEqual(
+            TextTransforms.latexToUnicode("\\[ x^2 + y^2 = z^2 \\]"),
+            " x² + y² = z² "
+        )
+    }
+
+    func testSubscripts() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("H_2O"), "H₂O")
+        XCTAssertEqual(TextTransforms.latexToUnicode("x_{ij}"), "xᵢⱼ")
+    }
+
+    func testSuperscriptGroup() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("10^{10}"), "10¹⁰")
+    }
+
+    func testFraction() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\frac{a}{b}"), "a/b")
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\frac{\\alpha}{2}"), "α/2")
+    }
+
+    func testTextWrapperKeepsContent() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\text{hello} \\alpha"), "hello α")
+    }
+
+    func testUnknownCommandKeptVerbatim() {
+        // Nothing is silently dropped when we don't recognise a command.
+        XCTAssertEqual(TextTransforms.latexToUnicode("\\foobar x"), "\\foobar x")
+    }
+
+    func testCurrencyDollarLeftAlone() {
+        XCTAssertEqual(TextTransforms.latexToUnicode("it costs $5 today"), "it costs $5 today")
+    }
+
+    func testPlainTextUnchanged() {
+        let input = "No math here, just prose."
+        XCTAssertEqual(TextTransforms.latexToUnicode(input), input)
+    }
+}
