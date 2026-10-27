@@ -257,6 +257,27 @@ deprecated API. Current gated spots:
   flavor (RTF) is also present. `HTML → Plain Text` overlaps with
   `Remove formatting` only when no RTF is present.
 
+### Stack mode (pinned popup)
+- Pin button in the popup title bar / `⌘P`. While pinned, a click or badge
+  key **pushes** the action onto `PopupViewModel.stack` (a
+  `TransformationStack`, in `PopupView.swift`) instead of pasting; `→`
+  pushes the highlighted one; `↩` pastes `stackResult`; `⌘Z` / `⇧⌘Z`
+  undo/redo. ⌘ keys are claimed in `PopupPanel.performKeyEquivalent`
+  (the main menu's Edit ▸ Undo would otherwise eat ⌘Z); ⌘-letters never
+  trigger action shortcuts.
+- Each layer stores its own result; layers are LIFO. An edit (`⇥`, then
+  `⇧↩`) is pushed as an `.edit` layer holding the edited snapshot, so
+  removing layers from the middle is deliberately unsupported.
+- `result(applying:)` feeds an action the stack top, or its preferred
+  clipboard flavor while the stack is empty; HTML actions are disabled
+  (`isAvailable`) above the first layer.
+- The stack column is an overlay on the popup's leading padding, so the
+  list decides the height; `updateMainPanelWidth()` grows the panel to the
+  left so the list and preview don't move. Unpinning keeps the stack
+  (`showsStack`); `show()` resets it; the hotkey closes a pinned popup;
+  outside clicks / resign-key don't. The main panel accepts first mouse.
+- Tests: `TextCleanerTests/TransformationStackTests.swift`.
+
 ---
 
 ## 8. Pin / dismiss behavior (pickers)

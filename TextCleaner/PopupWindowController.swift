@@ -51,6 +51,12 @@ final class PopupWindowController {
     // MARK: - Public
 
     func show() {
+        if mainPanel?.isVisible == true, model?.isPinned == true {
+            // Re-pressing the hotkey is the way out of a pinned popup,
+            // which ignores outside clicks.
+            close()
+            return
+        }
         if mainPanel == nil { build() }
         guard let mainPanel = mainPanel, let model = model else { return }
 
@@ -65,6 +71,8 @@ final class PopupWindowController {
         model.showsPreview = false
         model.isEditing = false
         model.editedAttributed = NSAttributedString()
+        model.resetStack()
+        updateMainPanelWidth()
 
         previewPanel?.orderOut(nil)
         // Forget any user resize from the previous session.
@@ -137,6 +145,7 @@ final class PopupWindowController {
             model: model,
             settings: AppSettings.shared,
             onSelect: { [weak self] action in self?.commitAction(action) },
+            onTogglePin: { [weak self] in self?.togglePin() },
             onDragBegan: { [weak self] loc in self?.handleMainDragBegan(at: loc) },
             onDragChanged: { [weak self] loc in self?.handleMainDragChanged(at: loc) },
             onDragEnded: { [weak self] in self?.handleMainDragEnded() }
@@ -144,7 +153,8 @@ final class PopupWindowController {
         let mainPanel = makePanel(
             style: PopupPanel.self,
             initialSize: NSSize(width: 340, height: 320),
-            rootView: popupView
+            rootView: popupView,
+            acceptsFirstMouse: true
         )
         // Don't let a click on the title-bar drag handle steal key from
         // the preview while the user is editing. The panel still becomes
@@ -162,6 +172,10 @@ final class PopupWindowController {
         }
         mainPanel.onTogglePreview = { [weak self] in self?.togglePreview() }
         mainPanel.onBeginEdit     = { [weak self] in self?.beginEdit() }
+        mainPanel.onAddSelected   = { [weak self] in self?.addSelectedToStack() }
+        mainPanel.onTogglePin     = { [weak self] in self?.togglePin() }
+        mainPanel.onUndo          = { [weak self] in self?.undoStack() }
+        mainPanel.onRedo          = { [weak self] in self?.redoStack() }
         mainPanel.customShortcut  = { [weak self] event in
             guard let self = self,
                   AppSettings.shared.centerShortcut.matches(event)
@@ -191,6 +205,8 @@ final class PopupWindowController {
     private func scheduleResignCheck() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, !self.ignoreResign else { return }
+            // A pinned popup stays up while the user works elsewhere.
+            if self.model?.isPinned == true { return }
             let key = NSApp.keyWindow
             if key === self.mainPanel || key === self.previewPanel {
                 return
@@ -263,7 +279,8 @@ final class PopupWindowController {
     private func makePanel<P: NSPanel, V: View>(
         style: P.Type,
         initialSize: NSSize,
-        rootView: V
+        rootView: V,
+        acceptsFirstMouse: Bool = false
     ) -> P {
         let panel = P(
             contentRect: NSRect(origin: .zero, size: initialSize),
@@ -281,7 +298,11 @@ final class PopupWindowController {
         panel.isMovableByWindowBackground = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
 
-        let hosting = NSHostingView(rootView: rootView)
+        // A pinned popup can lose key to another app; first-mouse lets the
+        // next click on an action stack it instead of only focusing.
+        let hosting: NSHostingView<V> = acceptsFirstMouse
+            ? FirstMouseHostingView(rootView: rootView)
+            : NSHostingView(rootView: rootView)
         hosting.translatesAutoresizingMaskIntoConstraints = false
         let container = NSView()
         container.translatesAutoresizingMaskIntoConstraints = false
@@ -484,7 +505,11 @@ final class PopupWindowController {
             _ = buildPreviewPanelIfNeeded()
         }
         applyThemeAppearance()
-        model.editedAttributed = model.currentPreviewAttributed
+        // Pinned, the edit applies to what's stacked so far, not to the
+        // highlighted action on top of it.
+        model.editedAttributed = model.isPinned
+            ? model.stackResult
+            : model.currentPreviewAttributed
         model.isEditing = true
         positionPreviewNextToMain()
 
@@ -525,7 +550,20 @@ final class PopupWindowController {
         let attributed = model.editedAttributed
         removeEditingKeyMonitor()
         clearFontManagerTarget()
-        pasteAndClose(attributed: attributed)
+        guard model.isPinned else {
+            pasteAndClose(attributed: attributed)
+            return
+        }
+        // Pinned: the edit becomes a layer; the preview stays open on it.
+        model.pushEdit(attributed)
+        model.isEditing = false
+        model.editedAttributed = NSAttributedString()
+        updateMainPanelWidth()
+        ignoreResign = true
+        mainPanel?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoreResign = false
+        }
     }
 
     private func clearFontManagerTarget() {
@@ -535,16 +573,79 @@ final class PopupWindowController {
         }
     }
 
+    /// Return: pastes the stack when something is stacked, otherwise the
+    /// highlighted action (applied on top of any stack left after
+    /// unpinning).
     private func confirmSelection() {
         guard let model = model else { return }
+        if model.isPinned, !model.stack.isEmpty {
+            pasteAndClose(attributed: model.stackResult)
+            return
+        }
         guard model.actions.indices.contains(model.selectedIndex) else { return }
+        let action = model.actions[model.selectedIndex]
+        guard model.isAvailable(action) else { return }
+        pasteAndClose(attributed: model.result(applying: action))
+    }
+
+    /// Click or 1–9 / a–z shortcut: stacks the action while pinned,
+    /// pastes it otherwise.
+    private func commitAction(_ action: TextAction) {
+        guard let model = model, model.isAvailable(action) else { return }
+        if model.isPinned {
+            model.pushAction(action)
+            stackDidChange()
+        } else {
+            pasteAndClose(attributed: model.result(applying: action))
+        }
+    }
+
+    // MARK: - Stack
+
+    private func togglePin() {
+        guard let model = model, !model.isEditing else { return }
+        model.isPinned.toggle()
+        stackDidChange()
+    }
+
+    /// → stacks the highlighted action (Return is taken by paste).
+    private func addSelectedToStack() {
+        guard let model = model, model.isPinned,
+              model.actions.indices.contains(model.selectedIndex) else { return }
         commitAction(model.actions[model.selectedIndex])
     }
 
-    private func commitAction(_ action: TextAction) {
-        guard let model = model else { return }
-        let attributed = action.transform(model.effectiveSource(for: action))
-        pasteAndClose(attributed: attributed)
+    private func undoStack() {
+        guard let model = model, !model.isEditing else { return }
+        model.undo()
+        stackDidChange()
+    }
+
+    private func redoStack() {
+        guard let model = model, !model.isEditing else { return }
+        model.redo()
+        stackDidChange()
+    }
+
+    private func stackDidChange() {
+        updateMainPanelWidth()
+        // The pinned popup may have lost key to another app; take it back
+        // so Return / ⌘Z / arrows keep working after a click.
+        if mainPanel?.isKeyWindow == false, previewPanel?.isKeyWindow != true {
+            mainPanel?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    /// The stack column grows the popup to the left, so the action list
+    /// and the preview on its right don't move.
+    private func updateMainPanelWidth() {
+        guard let mainPanel = mainPanel, let model = model else { return }
+        let width = PopupView.width(showingStack: model.showsStack)
+        var frame = mainPanel.frame
+        guard frame.width != width else { return }
+        frame.origin.x = frame.maxX - width
+        frame.size.width = width
+        mainPanel.setFrame(frame, display: true)
     }
 
     private func handleEscape() {
@@ -670,7 +771,8 @@ final class PopupWindowController {
         globalClickMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         ) { [weak self] _ in
-            guard let self = self, !self.ignoreResign else { return }
+            guard let self = self, !self.ignoreResign,
+                  self.model?.isPinned != true else { return }
             // Dismiss into whatever app the user clicked, without grabbing
             // focus back to where the popup was opened from.
             self.close(reactivating: false)
@@ -755,6 +857,10 @@ final class PopupPanel: NSPanel {
     var onShortcut:      ((Int) -> Void)?
     var onTogglePreview: (() -> Void)?
     var onBeginEdit:     (() -> Void)?
+    var onAddSelected:   (() -> Void)?
+    var onTogglePin:     (() -> Void)?
+    var onUndo:          (() -> Void)?
+    var onRedo:          (() -> Void)?
     /// Inspected before any keyDown switch. If it returns true the event
     /// is considered consumed (used for the user-configurable center
     /// shortcut, defined in AppSettings).
@@ -763,8 +869,33 @@ final class PopupPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    /// ⌘ shortcuts are claimed here, before the app's main menu (whose
+    /// Edit ▸ Undo would otherwise swallow ⌘Z).
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command),
+              flags.isDisjoint(with: [.option, .control]),
+              let key = event.charactersIgnoringModifiers?.lowercased()
+        else { return super.performKeyEquivalent(with: event) }
+        switch key {
+        case "z":
+            if flags.contains(.shift) { onRedo?() } else { onUndo?() }
+            return true
+        case "p" where !flags.contains(.shift):
+            onTogglePin?()
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
         if customShortcut?(event) == true { return }
+        // ⌘-letters are commands, never action shortcuts.
+        if event.modifierFlags.contains(.command) {
+            super.keyDown(with: event)
+            return
+        }
         switch Int(event.keyCode) {
         case kVK_UpArrow:
             if event.modifierFlags.contains(.shift) { onJumpToStart?() } else { onMoveUp?() }
@@ -778,6 +909,8 @@ final class PopupPanel: NSPanel {
             onTogglePreview?()
         case kVK_Tab:
             onBeginEdit?()
+        case kVK_RightArrow:
+            onAddSelected?()
         default:
             if let chars = event.charactersIgnoringModifiers,
                chars.count == 1,
@@ -807,5 +940,12 @@ final class PreviewPanel: NSPanel {
             return
         }
         super.keyDown(with: event)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if !isInEditMode(), let twin = twin {
+            return twin.performKeyEquivalent(with: event)
+        }
+        return super.performKeyEquivalent(with: event)
     }
 }

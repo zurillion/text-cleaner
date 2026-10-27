@@ -87,6 +87,31 @@ sullo schermo. Il pannello di anteprima (se aperto) la segue. Premi la
 scorciatoia di ricentratura (di default `⌥C`, configurabile) mentre la
 popup è aperta per riportarla al centro.
 
+### Più azioni in sequenza (pin)
+
+Clicca la puntina nella barra del titolo della popup (o premi `⌘P`) per
+applicare più azioni una dopo l'altra. Con la popup bloccata:
+
+- Il clic su un'azione o il tasto del suo badge la aggiunge allo stack
+  invece di incollarla; `→` aggiunge quella evidenziata. Ogni azione lavora
+  sul risultato della precedente.
+- Lo stack compare come bubbles in una colonna a sinistra, nell'ordine in
+  cui le azioni sono state applicate.
+- `⇥` apre l'editor sul risultato attuale; `⇧↩` aggiunge la modifica allo
+  stack come passaggio "Edit", così puoi continuare con altre azioni (per
+  esempio UPPERCASE, poi una modifica, poi Bold, poi un'altra modifica).
+- `⌘Z` toglie l'ultimo passaggio, `⇧⌘Z` lo rimette.
+- L'anteprima mostra il risultato dello stack con sopra l'azione
+  evidenziata.
+- `↩` incolla il risultato e chiude. `⎋` o la scorciatoia della popup
+  chiudono senza incollare; un clic fuori non chiude la popup bloccata.
+
+Le azioni che producono testo semplice (stili Unicode, camelCase,
+snake_case, Clean URL, LaTeX → Unicode) perdono la formattazione delle
+modifiche precedenti; UPPERCASE e lowercase la conservano. Le due azioni
+HTML leggono l'HTML della clipboard, quindi sono disponibili solo come
+primo passaggio.
+
 ### Azioni integrate
 
 La popup viene fornita con 36 azioni, tutte attive di default e raggruppate

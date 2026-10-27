@@ -35,10 +35,68 @@ enum ActionShortcutKey {
     }
 }
 
+/// The transformations applied so far while the popup is pinned. Each
+/// layer stores its own result, so undo is a pop and the final text is
+/// the last layer's result. Layers are strictly LIFO: an edit layer is a
+/// snapshot of the text as the user left it, which only stays meaningful
+/// while every layer below it is unchanged.
+struct TransformationStack {
+    struct Layer: Identifiable {
+        enum Kind {
+            case action(TextActionKind)
+            case edit
+        }
+
+        let id = UUID()
+        let kind: Kind
+        let title: String
+        let icon: String
+        let result: NSAttributedString
+    }
+
+    private(set) var layers: [Layer] = []
+    private var undone: [Layer] = []
+
+    var isEmpty: Bool { layers.isEmpty }
+    var canUndo: Bool { !layers.isEmpty }
+    var canRedo: Bool { !undone.isEmpty }
+
+    /// The text the next layer transforms: the last result, or `source`
+    /// when nothing has been stacked yet.
+    func result(over source: NSAttributedString) -> NSAttributedString {
+        layers.last?.result ?? source
+    }
+
+    /// Pushing a new layer forgets anything undone, like a text editor.
+    mutating func push(_ layer: Layer) {
+        layers.append(layer)
+        undone.removeAll()
+    }
+
+    mutating func undo() {
+        guard let layer = layers.popLast() else { return }
+        undone.append(layer)
+    }
+
+    mutating func redo() {
+        guard let layer = undone.popLast() else { return }
+        layers.append(layer)
+    }
+
+    mutating func reset() {
+        layers.removeAll()
+        undone.removeAll()
+    }
+}
+
 final class PopupViewModel: ObservableObject {
     @Published var selectedIndex: Int = 0
     @Published var showsPreview: Bool = false
     @Published var isEditing: Bool = false
+    /// Pinned popups stack actions instead of pasting them; Return pastes
+    /// the whole stack.
+    @Published var isPinned: Bool = false
+    @Published private(set) var stack = TransformationStack()
     @Published var editedAttributed: NSAttributedString = NSAttributedString()
     @Published var actions: [TextAction] = [] {
         didSet {
@@ -107,14 +165,60 @@ final class PopupViewModel: ObservableObject {
         selectedIndex = actions.count - 1
     }
 
-    /// Attributed text shown in the preview pane for the current state.
+    /// Attributed text shown in the preview pane for the current state:
+    /// the highlighted action applied on top of the stack.
     var currentPreviewAttributed: NSAttributedString {
         if isEditing { return editedAttributed }
-        guard actions.indices.contains(selectedIndex) else {
-            return NSAttributedString()
+        guard actions.indices.contains(selectedIndex),
+              isAvailable(actions[selectedIndex]) else {
+            return stackResult
         }
-        let action = actions[selectedIndex]
-        return action.transform(effectiveSource(for: action))
+        return result(applying: actions[selectedIndex])
+    }
+
+    // MARK: - Stack
+
+    /// Whether the stack column is shown: always while pinned, and after
+    /// unpinning as long as something is stacked (so nothing is lost).
+    var showsStack: Bool { isPinned || !stack.isEmpty }
+
+    /// The text produced by the stacked layers so far.
+    var stackResult: NSAttributedString { stack.result(over: sourceAttributed) }
+
+    /// HTML actions read the clipboard's HTML flavor, which only exists
+    /// below the first layer; further up they'd be a no-op or a duplicate
+    /// of Remove formatting, so they're disabled there.
+    func isAvailable(_ action: TextAction) -> Bool {
+        !(action.kind.prefersHTMLSource && !stack.isEmpty)
+    }
+
+    /// `action` applied to the top of the stack (to its own preferred
+    /// clipboard flavor while the stack is empty).
+    func result(applying action: TextAction) -> NSAttributedString {
+        let input = stack.isEmpty ? effectiveSource(for: action) : stackResult
+        return action.transform(input)
+    }
+
+    func pushAction(_ action: TextAction) {
+        guard isAvailable(action) else { return }
+        stack.push(.init(
+            kind: .action(action.kind),
+            title: action.title,
+            icon: action.displayIcon,
+            result: result(applying: action)
+        ))
+    }
+
+    func pushEdit(_ attributed: NSAttributedString) {
+        stack.push(.init(kind: .edit, title: "Edit", icon: "pencil", result: attributed))
+    }
+
+    func undo() { stack.undo() }
+    func redo() { stack.redo() }
+
+    func resetStack() {
+        stack.reset()
+        isPinned = false
     }
 }
 
@@ -122,12 +226,50 @@ struct PopupView: View {
     @ObservedObject var model: PopupViewModel
     @ObservedObject var settings: AppSettings
     let onSelect: (TextAction) -> Void
+    let onTogglePin: () -> Void
     let onDragBegan: (NSPoint) -> Void
     let onDragChanged: (NSPoint) -> Void
     let onDragEnded: () -> Void
 
+    static let baseWidth: CGFloat = 320
+    static let stackColumnWidth: CGFloat = 150
+    private static let columnSpacing: CGFloat = 10
+
+    /// The panel width; the controller resizes the window to match.
+    static func width(showingStack: Bool) -> CGFloat {
+        showingStack ? baseWidth + stackColumnWidth + columnSpacing : baseWidth
+    }
+
     var body: some View {
         let theme = settings.theme
+        // The stack column is an overlay on the leading padding, so the
+        // action list alone decides the popup's height.
+        mainColumn(theme: theme)
+            .frame(width: Self.baseWidth - 20)
+            .padding(.leading, model.showsStack ? Self.stackColumnWidth + Self.columnSpacing : 0)
+            .overlay(alignment: .topLeading) {
+                if model.showsStack {
+                    stackColumn(theme: theme)
+                        .frame(width: Self.stackColumnWidth)
+                        .frame(maxHeight: .infinity, alignment: .top)
+                }
+            }
+            .padding(10)
+            .frame(width: Self.width(showingStack: model.showsStack))
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(theme.background)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(theme.borderTint, lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
+            )
+            .preferredColorScheme(theme.preferredColorScheme)
+    }
+
+    @ViewBuilder
+    private func mainColumn(theme: PopupTheme) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             titleBar(theme: theme)
 
@@ -166,23 +308,120 @@ struct PopupView: View {
             HStack(spacing: 10) {
                 hint("⎵", "Preview")
                 hint("⇥", "Edit")
+                if model.isPinned {
+                    hint("→", "Add")
+                    hint("↩", "Paste")
+                }
                 Spacer()
             }
             .padding(.horizontal, 6)
             .padding(.bottom, 2)
         }
-        .padding(10)
-        .frame(width: 320)
+    }
+
+    // MARK: - Stack column
+
+    @ViewBuilder
+    private func stackColumn(theme: PopupTheme) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Stack")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(theme.secondaryForeground)
+                .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+                .padding(.horizontal, 6)
+                .padding(.top, 2)
+
+            if model.stack.isEmpty {
+                Text("Pick actions to apply them one after another.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(theme.secondaryForeground)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 6)
+                Spacer(minLength: 0)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(model.stack.layers.enumerated()), id: \.element.id) { index, layer in
+                                bubble(
+                                    number: index + 1,
+                                    layer: layer,
+                                    isTop: index == model.stack.layers.count - 1,
+                                    theme: theme
+                                )
+                                .id(layer.id)
+                            }
+                        }
+                    }
+                    .modifier(AutomaticScrollIndicatorsIfAvailable())
+                    .onChangeCompat(of: model.stack.layers.count) { _ in
+                        if let last = model.stack.layers.last {
+                            proxy.scrollTo(last.id, anchor: nil)
+                        }
+                    }
+                }
+            }
+
+            HStack(spacing: 10) {
+                hint("⌘Z", "Undo")
+                Spacer()
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 2)
+            .opacity(model.stack.canUndo ? 1 : 0.4)
+        }
+        .padding(.trailing, 2)
+        .overlay(alignment: .trailing) {
+            Rectangle()
+                .fill(theme.foreground.opacity(0.12))
+                .frame(width: 1)
+                .offset(x: Self.columnSpacing / 2 + 1)
+        }
+    }
+
+    private func bubble(
+        number: Int,
+        layer: TransformationStack.Layer,
+        isTop: Bool,
+        theme: PopupTheme
+    ) -> some View {
+        HStack(spacing: 6) {
+            Text("\(number)")
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(isTop ? theme.onAccent : theme.secondaryForeground)
+            Image(systemName: layer.icon)
+                .font(.system(size: 10))
+            Text(layer.title)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .foregroundStyle(isTop ? theme.onAccent : theme.foreground)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(theme.background)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(theme.borderTint, lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
+            Capsule().fill(isTop ? theme.accent : theme.chipBackground)
         )
-        .preferredColorScheme(theme.preferredColorScheme)
+        .help(layer.title)
+    }
+
+    private func pinButton(theme: PopupTheme) -> some View {
+        Button {
+            onTogglePin()
+        } label: {
+            Image(systemName: model.isPinned ? "pin.fill" : "pin")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(model.isPinned ? theme.onAccent : theme.secondaryForeground)
+                .frame(width: 20, height: 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(model.isPinned ? theme.accent : theme.foreground.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(model.isPinned
+              ? "Pinned — actions stack up, Return pastes the result (⌘P to unpin)."
+              : "Pin to apply several actions in a row (⌘P).")
     }
 
     @ViewBuilder
@@ -193,6 +432,7 @@ struct PopupView: View {
                 .foregroundStyle(theme.secondaryForeground)
                 .allowsHitTesting(false)
             Spacer()
+            pinButton(theme: theme)
         }
         .frame(maxWidth: .infinity, minHeight: 22)
         .padding(.horizontal, 6)
@@ -217,6 +457,7 @@ struct PopupView: View {
     @ViewBuilder
     private func row(index: Int, action: TextAction, theme: PopupTheme) -> some View {
         let isSelected = index == model.selectedIndex
+        let isAvailable = model.isAvailable(action)
         HStack(spacing: 10) {
             Text(ActionShortcutKey.label(for: index) ?? "")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -244,6 +485,7 @@ struct PopupView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(isSelected ? theme.accent : Color.clear)
         )
+        .opacity(isAvailable ? 1 : 0.4)
         .contentShape(Rectangle())
         .onHover { hovering in
             // Ignore hover that fires merely because a row slid under a
@@ -257,7 +499,7 @@ struct PopupView: View {
             // Don't let a stray click on the main popup discard an
             // in-progress edit. The user must explicitly Annulla / Esc /
             // Conferma / ⇧Return to leave edit mode.
-            guard !model.isEditing else { return }
+            guard !model.isEditing, isAvailable else { return }
             onSelect(action)
         }
     }

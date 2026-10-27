@@ -81,6 +81,30 @@ Drag the popup by its title bar to reposition it anywhere on screen. The
 preview pane (if open) follows. Press the re-center shortcut (default
 `⌥C`, configurable) while the popup is open to snap it back to centre.
 
+### Stacking several actions (pin)
+
+Click the pin in the popup's title bar (or press `⌘P`) to apply several
+actions in a row. While pinned:
+
+- Clicking an action or pressing its badge key adds it to the stack
+  instead of pasting; `→` adds the highlighted one. Each action works on
+  the result of the previous one.
+- The stack appears as bubbles in a column on the left, in the order the
+  actions were applied.
+- `⇥` opens the editor on the current result; `⇧↩` adds your edit to the
+  stack as an "Edit" step, so you can go on with more actions (e.g.
+  UPPERCASE, then an edit, then Bold, then another edit).
+- `⌘Z` removes the last step, `⇧⌘Z` puts it back.
+- The preview shows the stack's result with the highlighted action
+  applied on top.
+- `↩` pastes the result and closes. `⎋` or the popup hotkey closes
+  without pasting; clicking outside doesn't close a pinned popup.
+
+Actions that produce plain text (Unicode styles, camelCase, snake_case,
+Clean URL, LaTeX → Unicode) drop the formatting of earlier edits;
+UPPERCASE and lowercase keep it. The two HTML actions read the
+clipboard's HTML, so they're only available as the first step.
+
 ### Built-in actions
 
 The popup ships with 36 actions, all enabled by default and grouped with

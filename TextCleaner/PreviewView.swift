@@ -45,7 +45,8 @@ struct PreviewView: View {
                 hint(key: "⇥", label: "Edit", theme: theme)
             } else {
                 hint(key: "⌘T", label: "Style", theme: theme)
-                hint(key: "⇧↩", label: "Confirm", theme: theme)
+                // Pinned, confirming stacks the edit instead of pasting it.
+                hint(key: "⇧↩", label: model.isPinned ? "Add" : "Confirm", theme: theme)
                 hint(key: "⎋", label: "Cancel", theme: theme)
             }
         }
@@ -89,7 +90,7 @@ struct PreviewView: View {
         HStack(spacing: 8) {
             Spacer()
             Button("Annulla", action: onCancel)
-            Button("Conferma", action: onConfirm)
+            Button(model.isPinned ? "Aggiungi" : "Conferma", action: onConfirm)
                 .buttonStyle(.borderedProminent)
         }
         .padding(.horizontal, 2)
